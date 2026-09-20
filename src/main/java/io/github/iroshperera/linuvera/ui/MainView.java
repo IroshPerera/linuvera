@@ -249,6 +249,12 @@ public final class MainView extends BorderPane {
     }
 
     private void showPage(String pageName) {
+        if ("Services".equals(pageName)) {
+            pageContainer.getChildren()
+                    .setAll(createServicesPage());
+
+            return;
+        }
 
         if ("Dashboard".equals(pageName)) {
             pageContainer.getChildren()
@@ -306,6 +312,145 @@ public final class MainView extends BorderPane {
 
         pageContainer.getChildren()
                 .setAll(placeholder);
+    }
+
+    private ScrollPane createServicesPage() {
+
+        Label title = new Label("Linux Services");
+        title.getStyleClass().add("page-title");
+
+        Label subtitle = new Label(
+                "Monitor systemd services running on this Linux machine."
+        );
+        subtitle.getStyleClass().add("page-subtitle");
+
+        VBox heading = new VBox(
+                6,
+                title,
+                subtitle
+        );
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button refreshButton = new Button("Refresh services");
+        refreshButton.getStyleClass().add("refresh-button");
+
+        refreshButton.setOnAction(event ->
+                pageContainer.getChildren()
+                        .setAll(createServicesPage())
+        );
+
+        HBox header = new HBox(
+                20,
+                heading,
+                spacer,
+                refreshButton
+        );
+
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        VBox serviceCards = new VBox(14);
+
+        for (LinuxServiceStatusService.ServiceStatus serviceStatus
+                : serviceStatusService.collectStatuses()) {
+
+            serviceCards.getChildren().add(
+                    createServiceDetailCard(serviceStatus)
+            );
+        }
+
+        VBox content = new VBox(
+                24,
+                header,
+                serviceCards
+        );
+
+        content.setPadding(
+                new Insets(34)
+        );
+
+        content.getStyleClass().add("dashboard-content");
+
+        ScrollPane scrollPane = new ScrollPane(content);
+
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(
+                ScrollPane.ScrollBarPolicy.NEVER
+        );
+
+        scrollPane.getStyleClass()
+                .add("dashboard-scroll");
+
+        return scrollPane;
+    }
+
+    private VBox createServiceDetailCard(
+            LinuxServiceStatusService.ServiceStatus serviceStatus
+    ) {
+        Label indicator = new Label();
+        indicator.getStyleClass().add("status-indicator");
+
+        if (serviceStatus.running()) {
+            indicator.getStyleClass()
+                    .add("status-indicator-good");
+        } else {
+            indicator.getStyleClass()
+                    .add("status-indicator-muted");
+        }
+
+        Label serviceName = new Label(
+                serviceStatus.displayName()
+        );
+        serviceName.getStyleClass().add("service-name");
+
+        Label unitName = new Label(
+                serviceStatus.unitName()
+        );
+        unitName.getStyleClass().add("page-subtitle");
+
+        VBox information = new VBox(
+                5,
+                serviceName,
+                unitName
+        );
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label status = new Label(
+                serviceStatus.status()
+        );
+
+        if (serviceStatus.running()) {
+            status.getStyleClass()
+                    .add("service-status-good");
+        } else {
+            status.getStyleClass()
+                    .add("service-status-muted");
+        }
+
+        HBox header = new HBox(
+                12,
+                indicator,
+                information,
+                spacer,
+                status
+        );
+
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        VBox card = new VBox(
+                header
+        );
+
+        card.setPadding(
+                new Insets(20)
+        );
+
+        card.getStyleClass().add("services-card");
+
+        return card;
     }
 
     private ScrollPane createDashboardContent() {
