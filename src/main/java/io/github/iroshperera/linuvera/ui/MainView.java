@@ -25,6 +25,8 @@ import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 
+import java.util.List;
+
 import java.util.Locale;
 
 public final class MainView extends BorderPane {
@@ -37,8 +39,8 @@ public final class MainView extends BorderPane {
 
     private final Timeline metricsRefreshTimer = new Timeline(
             new KeyFrame(
-                    Duration.seconds(1),
-                    event -> refreshDashboardMetrics()
+                    Duration.seconds(3),
+                    event -> refreshAutoData()
             )
     );
 
@@ -66,6 +68,13 @@ public final class MainView extends BorderPane {
 
     private Label pageTitleLabel;
     private Label pageSubtitleLabel;
+
+    private TableView<LinuxPortService.PortInfo> portsTable;
+
+    private Label totalEndpointsValueLabel;
+    private Label tcpEndpointsValueLabel;
+    private Label udpEndpointsValueLabel;
+    private Label uniquePortsValueLabel;
 
     public MainView() {
         getStyleClass().add("app-shell");
@@ -268,15 +277,27 @@ public final class MainView extends BorderPane {
             }
 
             case "Services" ->
-                    pageContainer.getChildren()
-                            .setAll(createServicesPage());
+                    refreshServiceRows();
 
             case "Ports" ->
-                    pageContainer.getChildren()
-                            .setAll(createPortsPage());
+                    refreshPortsData();
 
             default ->
                     showPage(currentPage);
+        }
+    }
+    private void refreshAutoData() {
+
+        switch (currentPage) {
+            case "Dashboard" ->
+                    refreshDashboardMetrics();
+
+            case "Ports" ->
+                    refreshPortsData();
+
+            default -> {
+                // No automatic refresh required.
+            }
         }
     }
 
@@ -354,29 +375,21 @@ public final class MainView extends BorderPane {
         }
 
         String description = switch (pageName) {
-            case "System Health" ->
-                    "View CPU, memory, disk, battery, and system health information.";
+            case "System Health" -> "View CPU, memory, disk, battery, and system health information.";
 
-            case "Processes" ->
-                    "Inspect running processes and resource usage.";
+            case "Processes" -> "Inspect running processes and resource usage.";
 
-            case "Storage" ->
-                    "Analyze disks, mount points, and available storage.";
+            case "Storage" -> "Analyze disks, mount points, and available storage.";
 
-            case "Environment" ->
-                    "Check Java, Maven, Git, Docker, Node.js, and other tools.";
+            case "Environment" -> "Check Java, Maven, Git, Docker, Node.js, and other tools.";
 
-            case "Services" ->
-                    "Monitor Linux services such as Nginx, PostgreSQL, and Docker.";
+            case "Services" -> "Monitor Linux services such as Nginx, PostgreSQL, and Docker.";
 
-            case "Ports" ->
-                    "Inspect active ports and the processes using them.";
+            case "Ports" -> "Inspect active ports and the processes using them.";
 
-            case "Logs" ->
-                    "Read and filter system and application logs.";
+            case "Logs" -> "Read and filter system and application logs.";
 
-            default ->
-                    "This Linuvera module will be implemented soon.";
+            default -> "This Linuvera module will be implemented soon.";
         };
 
         Label title = new Label(pageName);
@@ -533,13 +546,20 @@ public final class MainView extends BorderPane {
         Label sectionTitle = new Label("Active listeners");
         sectionTitle.getStyleClass().add("section-title");
 
-        TableView<LinuxPortService.PortInfo> table =
-                createPortsTable();
+        List<LinuxPortService.PortInfo> ports =
+                collectPortsSafely();
+
+        GridPane summaryGrid =
+                createPortSummaryGrid(ports);
+
+        portsTable =
+                createPortsTable(ports);
 
         VBox content = new VBox(
                 18,
                 sectionTitle,
-                table
+                summaryGrid,
+                portsTable
         );
 
         content.setPadding(
@@ -561,8 +581,191 @@ public final class MainView extends BorderPane {
         return scrollPane;
     }
 
+    private void refreshPortsData() {
+
+        if (portsTable == null) {
+            return;
+        }
+
+        List<LinuxPortService.PortInfo> ports =
+                collectPortsSafely();
+
+        portsTable.getItems().setAll(ports);
+
+        updatePortSummaryValues(ports);
+    }
+
+    private void updatePortSummaryValues(
+            List<LinuxPortService.PortInfo> ports
+    ) {
+
+        if (totalEndpointsValueLabel == null
+                || tcpEndpointsValueLabel == null
+                || udpEndpointsValueLabel == null
+                || uniquePortsValueLabel == null) {
+            return;
+        }
+
+        long totalEndpoints = ports.size();
+
+        long tcpEndpoints = countPortsByProtocol(
+                ports,
+                "tcp"
+        );
+
+        long udpEndpoints = countPortsByProtocol(
+                ports,
+                "udp"
+        );
+
+        long uniquePorts = ports.stream()
+                .map(LinuxPortService.PortInfo::port)
+                .distinct()
+                .count();
+
+        totalEndpointsValueLabel.setText(
+                String.valueOf(totalEndpoints)
+        );
+
+        tcpEndpointsValueLabel.setText(
+                String.valueOf(tcpEndpoints)
+        );
+
+        udpEndpointsValueLabel.setText(
+                String.valueOf(udpEndpoints)
+        );
+
+        uniquePortsValueLabel.setText(
+                String.valueOf(uniquePorts)
+        );
+    }
+
+    private long countPortsByProtocol(
+            List<LinuxPortService.PortInfo> ports,
+            String protocol
+    ) {
+        return ports.stream()
+                .filter(port ->
+                        protocol.equalsIgnoreCase(
+                                port.protocol()
+                        )
+                )
+                .count();
+    }
+
+    private List<LinuxPortService.PortInfo>
+    collectPortsSafely() {
+
+        try {
+            return portService.collectPorts();
+
+        } catch (RuntimeException exception) {
+            System.err.println(
+                    "Unable to collect ports: "
+                            + exception.getMessage()
+            );
+
+            return List.of();
+        }
+    }
+
+    private GridPane createPortSummaryGrid(
+            List<LinuxPortService.PortInfo> ports
+    ) {
+        long totalEndpoints = ports.size();
+
+        long tcpEndpoints = ports.stream()
+                .filter(port ->
+                        "tcp".equalsIgnoreCase(
+                                port.protocol()
+                        )
+                )
+                .count();
+
+        long udpEndpoints = ports.stream()
+                .filter(port ->
+                        "udp".equalsIgnoreCase(
+                                port.protocol()
+                        )
+                )
+                .count();
+
+        long uniquePorts = ports.stream()
+                .map(LinuxPortService.PortInfo::port)
+                .distinct()
+                .count();
+
+        GridPane grid = new GridPane();
+
+        grid.setHgap(16);
+        grid.setVgap(16);
+
+        grid.add(
+                createMetricCard(
+                        "Total Endpoints",
+                        String.valueOf(totalEndpoints),
+                        "Detected",
+                        "metric-card-blue",
+                        "port-summary"
+                ),
+                0,
+                0
+        );
+
+        grid.add(
+                createMetricCard(
+                        "TCP Endpoints",
+                        String.valueOf(tcpEndpoints),
+                        "TCP",
+                        "metric-card-purple",
+                        "port-summary"
+                ),
+                1,
+                0
+        );
+
+        grid.add(
+                createMetricCard(
+                        "UDP Endpoints",
+                        String.valueOf(udpEndpoints),
+                        "UDP",
+                        "metric-card-green",
+                        "port-summary"
+                ),
+                2,
+                0
+        );
+
+        grid.add(
+                createMetricCard(
+                        "Unique Ports",
+                        String.valueOf(uniquePorts),
+                        "Distinct ports",
+                        "metric-card-orange",
+                        "port-summary"
+                ),
+                3,
+                0
+        );
+
+        for (int index = 0; index < 4; index++) {
+            ColumnConstraints constraints =
+                    new ColumnConstraints();
+
+            constraints.setHgrow(Priority.ALWAYS);
+            constraints.setFillWidth(true);
+
+            grid.getColumnConstraints()
+                    .add(constraints);
+        }
+
+        return grid;
+    }
+
     private TableView<LinuxPortService.PortInfo>
-    createPortsTable() {
+    createPortsTable(
+            List<LinuxPortService.PortInfo> ports
+    ) {
 
         TableView<LinuxPortService.PortInfo> table =
                 new TableView<>();
@@ -674,17 +877,7 @@ public final class MainView extends BorderPane {
 
         table.getStyleClass().add("ports-table");
 
-        try {
-            table.getItems().setAll(
-                    portService.collectPorts()
-            );
-        } catch (RuntimeException exception) {
-            table.setPlaceholder(
-                    new Label(
-                            "Unable to read listening ports."
-                    )
-            );
-        }
+        table.getItems().setAll(ports);
 
         return table;
     }
@@ -823,7 +1016,28 @@ public final class MainView extends BorderPane {
                 uptimeStatusLabel = statusLabel;
             }
 
-            default -> {
+            case "port-summary" -> {
+
+                switch (title) {
+                    case "Total Endpoints" ->
+                            totalEndpointsValueLabel = valueLabel;
+
+                    case "TCP Endpoints" ->
+                            tcpEndpointsValueLabel = valueLabel;
+
+                    case "UDP Endpoints" ->
+                            udpEndpointsValueLabel = valueLabel;
+
+                    case "Unique Ports" ->
+                            uniquePortsValueLabel = valueLabel;
+
+                    default -> {
+                        // Unknown summary card.
+                    }
+                }
+            }
+
+                    default -> {
                 // No dynamic data required for this card yet.
             }
         }
