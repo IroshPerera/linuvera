@@ -322,18 +322,15 @@
     -fx-stroke-width: 2.5px;
 }
 
-.metric-card-blue
-.default-color0.chart-series-line {
+.metric-card-blue .default-color0.chart-series-line {
     -fx-stroke: #2563eb;
 }
 
-.metric-card-purple
-.default-color0.chart-series-line {
+.metric-card-purple .default-color0.chart-series-line {
     -fx-stroke: #7c3aed;
 }
 
-.metric-card-orange
-.default-color0.chart-series-line {
+.metric-card-orange .default-color0.chart-series-line {
     -fx-stroke: #f97316;
 }
 

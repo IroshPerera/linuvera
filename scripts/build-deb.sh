@@ -6,6 +6,7 @@ APP_NAME="Linuvera"
 APP_VERSION="0.1.1"
 MAIN_JAR="linuvera-desktop-0.1.0-SNAPSHOT.jar"
 MAIN_CLASS="io.github.iroshperera.linuvera.LinuveraApplication"
+ICON_PATH="src/main/resources/packaging/linuvera-icon.png"
 
 echo "Building application JAR..."
 
@@ -42,6 +43,7 @@ jpackage \
     --input target/packaging \
     --main-jar "$MAIN_JAR" \
     --main-class "$MAIN_CLASS" \
+    --icon "$ICON_PATH" \
     --module-path target/javafx-modules \
     --add-modules javafx.controls,javafx.graphics,javafx.base \
     --dest target/dist \

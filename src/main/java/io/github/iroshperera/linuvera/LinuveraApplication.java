@@ -4,6 +4,7 @@ import io.github.iroshperera.linuvera.ui.MainView;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.scene.image.Image;
 
 public final class LinuveraApplication extends Application {
 
@@ -29,6 +30,16 @@ public final class LinuveraApplication extends Application {
         if (stylesheet != null) {
             scene.getStylesheets()
                     .add(stylesheet.toExternalForm());
+        }
+
+        var applicationIcon = getClass()
+                .getResourceAsStream(
+                        "/packaging/linuvera-icon.png"
+                );
+
+        if (applicationIcon != null) {
+            primaryStage.getIcons()
+                    .add(new Image(applicationIcon));
         }
 
         primaryStage.setTitle(APPLICATION_TITLE);
