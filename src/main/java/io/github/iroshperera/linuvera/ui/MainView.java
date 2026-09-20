@@ -24,6 +24,11 @@ import javafx.util.Duration;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.TextField;
 
 import java.util.List;
 
@@ -75,6 +80,14 @@ public final class MainView extends BorderPane {
     private Label tcpEndpointsValueLabel;
     private Label udpEndpointsValueLabel;
     private Label uniquePortsValueLabel;
+
+    private final ObservableList<LinuxPortService.PortInfo> allPorts =
+            FXCollections.observableArrayList();
+
+    private FilteredList<LinuxPortService.PortInfo> filteredPorts;
+
+    private TextField portSearchField;
+    private ComboBox<String> protocolFilter;
 
     public MainView() {
         getStyleClass().add("app-shell");
@@ -549,16 +562,27 @@ public final class MainView extends BorderPane {
         List<LinuxPortService.PortInfo> ports =
                 collectPortsSafely();
 
+        allPorts.setAll(ports);
+
+        filteredPorts = new FilteredList<>(
+                allPorts,
+                port -> true
+        );
+
         GridPane summaryGrid =
                 createPortSummaryGrid(ports);
 
+        HBox filterBar =
+                createPortFilterBar();
+
         portsTable =
-                createPortsTable(ports);
+                createPortsTable(filteredPorts);
 
         VBox content = new VBox(
                 18,
                 sectionTitle,
                 summaryGrid,
+                filterBar,
                 portsTable
         );
 
@@ -583,16 +607,18 @@ public final class MainView extends BorderPane {
 
     private void refreshPortsData() {
 
-        if (portsTable == null) {
+        if (portsTable == null
+                || filteredPorts == null) {
             return;
         }
 
         List<LinuxPortService.PortInfo> ports =
                 collectPortsSafely();
 
-        portsTable.getItems().setAll(ports);
+        allPorts.setAll(ports);
 
         updatePortSummaryValues(ports);
+        applyPortFilter();
     }
 
     private void updatePortSummaryValues(
@@ -762,9 +788,106 @@ public final class MainView extends BorderPane {
         return grid;
     }
 
+    private HBox createPortFilterBar() {
+
+        portSearchField = new TextField();
+        portSearchField.setPromptText(
+                "Search port, address, or process..."
+        );
+        portSearchField.getStyleClass()
+                .add("port-search-field");
+
+        protocolFilter = new ComboBox<>();
+
+        protocolFilter.setItems(
+                FXCollections.observableArrayList(
+                        "All",
+                        "TCP",
+                        "UDP"
+                )
+        );
+
+        protocolFilter.setValue("All");
+
+        protocolFilter.getStyleClass()
+                .add("port-protocol-filter");
+
+        portSearchField.textProperty()
+                .addListener(
+                        (observable, oldValue, newValue) ->
+                                applyPortFilter()
+                );
+
+        protocolFilter.valueProperty()
+                .addListener(
+                        (observable, oldValue, newValue) ->
+                                applyPortFilter()
+                );
+
+        HBox.setHgrow(
+                portSearchField,
+                Priority.ALWAYS
+        );
+
+        HBox filterBar = new HBox(
+                12,
+                portSearchField,
+                protocolFilter
+        );
+
+        filterBar.setAlignment(Pos.CENTER_LEFT);
+        filterBar.getStyleClass()
+                .add("port-filter-bar");
+
+        return filterBar;
+    }
+
+    private void applyPortFilter() {
+
+        if (filteredPorts == null) {
+            return;
+        }
+
+        String searchText =
+                portSearchField.getText()
+                        .trim()
+                        .toLowerCase(Locale.ROOT);
+
+        String selectedProtocol =
+                protocolFilter.getValue();
+
+        if (selectedProtocol == null) {
+            selectedProtocol = "All";
+        }
+
+        String protocol =
+                selectedProtocol;
+
+        filteredPorts.setPredicate(port -> {
+
+            boolean protocolMatches =
+                    "All".equals(protocol)
+                            || port.protocol()
+                            .equalsIgnoreCase(protocol);
+
+            String searchableText = String.join(
+                    " ",
+                    port.protocol(),
+                    port.state(),
+                    port.localAddress(),
+                    String.valueOf(port.port()),
+                    port.processName(),
+                    String.valueOf(port.processId())
+            ).toLowerCase(Locale.ROOT);
+
+            return protocolMatches
+                    && searchableText.contains(searchText);
+        });
+    }
+
     private TableView<LinuxPortService.PortInfo>
     createPortsTable(
-            List<LinuxPortService.PortInfo> ports
+            ObservableList<LinuxPortService.PortInfo> ports
     ) {
 
         TableView<LinuxPortService.PortInfo> table =
@@ -877,7 +1000,7 @@ public final class MainView extends BorderPane {
 
         table.getStyleClass().add("ports-table");
 
-        table.getItems().setAll(ports);
+        table.setItems(ports);
 
         return table;
     }
