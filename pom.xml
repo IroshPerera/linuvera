@@ -24,14 +24,14 @@
 
     <dependencies>
 
-        <!-- JavaFX user interface controls -->
+        <!-- JavaFX UI controls -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
         </dependency>
 
-        <!-- JUnit testing framework -->
+        <!-- Unit testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -44,7 +44,7 @@
     <build>
         <plugins>
 
-            <!-- Compiles the project using Java 21 -->
+            <!-- Java 21 compiler -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -55,11 +55,24 @@
                 </configuration>
             </plugin>
 
-            <!-- Runs JUnit tests -->
+            <!-- JUnit test runner -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.0</version>
+            </plugin>
+
+            <!-- JavaFX application runner -->
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
+
+                <configuration>
+                    <mainClass>
+                        io.github.iroshperera.linuvera.LinuveraApplication
+                    </mainClass>
+                </configuration>
             </plugin>
 
         </plugins>
