@@ -336,3 +336,19 @@
 .default-color0.chart-series-line {
     -fx-stroke: #f97316;
 }
+
+.logs-text-area {
+    -fx-background-color: #101828;
+    -fx-control-inner-background: #101828;
+    -fx-text-fill: #d0d5dd;
+    -fx-font-family: "Monospace";
+    -fx-font-size: 12px;
+    -fx-border-color: #1d2939;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-padding: 14px;
+}
+
+.logs-text-area .content {
+    -fx-background-color: #101828;
+}

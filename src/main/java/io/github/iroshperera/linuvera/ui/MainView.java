@@ -35,6 +35,12 @@ import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import io.github.iroshperera.linuvera.system.ProcessMetricsService;
 import io.github.iroshperera.linuvera.system.StorageMetricsService;
+import io.github.iroshperera.linuvera.system.SystemLogService;
+import javafx.scene.control.TextArea;
+import java.util.Locale;
+import java.util.stream.Collectors;
+
+import javafx.scene.control.TextField;
 
 import java.util.List;
 
@@ -159,6 +165,15 @@ public final class MainView extends BorderPane {
             > storageTable;
 
     private VBox servicesCardsContainer;
+
+    private final SystemLogService systemLogService =
+            new SystemLogService();
+
+    private TextArea logsTextArea;
+
+    private TextField logSearchField;
+
+    private String allLogsText = "";
 
     public MainView() {
         getStyleClass().add("app-shell");
@@ -401,6 +416,8 @@ public final class MainView extends BorderPane {
             case "Services" ->
                     refreshServicesData();
 
+            case "Logs" -> refreshLogsData();
+
             default -> {
                 // No automatic refresh required.
             }
@@ -453,6 +470,13 @@ public final class MainView extends BorderPane {
                 );
             }
 
+            case "Logs" -> {
+                pageTitleLabel.setText("System Logs");
+                pageSubtitleLabel.setText(
+                        "Read recent system logs from this Linux machine."
+                );
+            }
+
             default -> {
                 pageTitleLabel.setText(pageName);
                 pageSubtitleLabel.setText(
@@ -466,6 +490,13 @@ public final class MainView extends BorderPane {
 
         currentPage = pageName;
         updateTopBar(pageName);
+
+        if ("Logs".equals(pageName)) {
+            pageContainer.getChildren()
+                    .setAll(createLogsPage());
+
+            return;
+        }
 
         if ("Storage".equals(pageName)) {
             pageContainer.getChildren()
@@ -2791,5 +2822,128 @@ public final class MainView extends BorderPane {
                                 )
                                 .toList()
                 );
+    }
+
+    private ScrollPane createLogsPage() {
+
+        allLogsText =
+                systemLogService.collectRecentLogs();
+
+        logsTextArea =
+                new TextArea(allLogsText);
+
+        logSearchField =
+                new TextField();
+
+        logSearchField.setPromptText(
+                "Search logs..."
+        );
+
+        logSearchField.getStyleClass()
+                .add("search-field");
+
+        logSearchField.textProperty()
+                .addListener(
+                        (observable, oldValue, newValue) ->
+                                applyLogFilter()
+                );
+
+        HBox logsToolbar =
+                new HBox(
+                        12,
+                        logSearchField
+                );
+
+        logsToolbar.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        logsTextArea.setEditable(false);
+        logsTextArea.setWrapText(true);
+        logsTextArea.setPrefRowCount(32);
+        logsTextArea.setPrefColumnCount(100);
+        logsTextArea.setPrefRowCount(28);
+        logsTextArea.setPrefColumnCount(120);
+
+        logsTextArea.getStyleClass()
+                .add("logs-text-area");
+
+        VBox.setVgrow(
+                logsTextArea,
+                Priority.ALWAYS
+        );
+
+        VBox content = new VBox(
+                16,
+                logsToolbar,
+                logsTextArea
+        );
+
+        content.setPadding(
+                new Insets(34)
+        );
+
+        content.getStyleClass()
+                .add("dashboard-content");
+
+        ScrollPane scrollPane =
+                new ScrollPane(content);
+
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(
+                ScrollPane.ScrollBarPolicy.NEVER
+        );
+
+        scrollPane.getStyleClass()
+                .add("dashboard-scroll");
+
+        return scrollPane;
+    }
+
+    private void refreshLogsData() {
+
+        if (!"Logs".equals(currentPage)
+                || logsTextArea == null) {
+            return;
+        }
+
+        String latestLogs =
+                systemLogService.collectRecentLogs();
+
+        if (!latestLogs.equals(allLogsText)) {
+            allLogsText = latestLogs;
+            applyLogFilter();
+        }
+    }
+
+    private void applyLogFilter() {
+
+        if (logsTextArea == null) {
+            return;
+        }
+
+        final String searchQuery =
+                logSearchField == null
+                        ? ""
+                        : logSearchField
+                        .getText()
+                        .trim()
+                        .toLowerCase(Locale.ROOT);
+
+        String filteredLogs =
+                allLogsText.lines()
+                        .filter(line ->
+                                searchQuery.isBlank()
+                                        || line.toLowerCase(
+                                        Locale.ROOT
+                                ).contains(searchQuery)
+                        )
+                        .collect(
+                                Collectors.joining(
+                                        System.lineSeparator()
+                                )
+                        );
+
+        logsTextArea.setText(filteredLogs);
     }
 }
