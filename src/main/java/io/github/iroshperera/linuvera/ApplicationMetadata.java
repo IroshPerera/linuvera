@@ -3,7 +3,7 @@ package io.github.iroshperera.linuvera;
 public final class ApplicationMetadata {
 
     private static final String APPLICATION_NAME = "Linuvera";
-    private static final String APPLICATION_VERSION = "0.1.2";
+    private static final String APPLICATION_VERSION = "0.1.3";
 
     private ApplicationMetadata() {
         // Utility class cannot be instantiated.

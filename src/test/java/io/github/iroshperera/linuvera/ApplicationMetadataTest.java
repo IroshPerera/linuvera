@@ -22,6 +22,6 @@ class ApplicationMetadataTest {
                 ApplicationMetadata.getApplicationVersion();
 
         assertNotNull(applicationVersion);
-        assertEquals("0.1.2", applicationVersion);
+        assertEquals("0.1.3", applicationVersion);
     }
 }

@@ -15,6 +15,17 @@ This project follows the principles of
 - CSV and JSON report export
 - Additional Linux distribution support
 
+## [0.1.3] - 2026-09-20
+
+### Added
+
+- Added the Linuvera application logo to the top toolbar.
+
+### Fixed
+
+- Included the `java.logging` module in the bundled Java runtime.
+- Fixed the Processes page in the packaged Debian application.
+
 ## [0.1.2] - 2026-09-20
 
 ### Changed

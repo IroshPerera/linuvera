@@ -7,6 +7,8 @@ import io.github.iroshperera.linuvera.system.LinuxPortService;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.BorderPane;
@@ -250,7 +252,7 @@ public final class MainView extends BorderPane {
 
         VBox.setVgrow(navigation, Priority.ALWAYS);
 
-        Label version = new Label("v0.1.2");
+        Label version = new Label("v0.1.3");
         version.getStyleClass().add("sidebar-version");
 
         VBox sidebar = new VBox(
@@ -342,6 +344,24 @@ public final class MainView extends BorderPane {
                 pageSubtitleLabel
         );
 
+        ImageView applicationLogo = new ImageView();
+
+        var logoStream = getClass().getResourceAsStream(
+                "/packaging/linuvera-icon.png"
+        );
+
+        if (logoStream != null) {
+            applicationLogo.setImage(
+                    new Image(logoStream)
+            );
+        }
+
+        applicationLogo.setFitWidth(38);
+        applicationLogo.setFitHeight(38);
+        applicationLogo.setPreserveRatio(true);
+        applicationLogo.setSmooth(true);
+        applicationLogo.getStyleClass().add("topbar-logo");
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -353,15 +373,17 @@ public final class MainView extends BorderPane {
         );
 
         HBox topBar = new HBox(
-                20,
+                16,
+                applicationLogo,
                 pageInformation,
                 spacer,
                 refreshButton
         );
 
         topBar.setAlignment(Pos.CENTER_LEFT);
+
         topBar.setPadding(
-                new Insets(26, 34, 26, 34)
+                new Insets(18, 34, 18, 34)
         );
 
         topBar.getStyleClass().add("top-bar");
