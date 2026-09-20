@@ -138,6 +138,17 @@ public final class MainView extends BorderPane {
             ProcessMetricsService.ProcessInfo
             > processesTable;
 
+    private final ObservableList<
+            ProcessMetricsService.ProcessInfo
+            > allProcesses =
+            FXCollections.observableArrayList();
+
+    private FilteredList<
+            ProcessMetricsService.ProcessInfo
+            > filteredProcesses;
+
+    private TextField processSearchField;
+
     public MainView() {
         getStyleClass().add("app-shell");
 
@@ -1212,11 +1223,11 @@ public final class MainView extends BorderPane {
             return;
         }
 
-        processesTable.getItems()
-                .setAll(
-                        processMetricsService
-                                .collectProcesses()
-                );
+        allProcesses.setAll(
+                processMetricsService
+                        .collectProcesses()
+        );
+        applyProcessFilter();
     }
 
     private void refreshPortsData() {
@@ -2195,10 +2206,42 @@ public final class MainView extends BorderPane {
         processesTable =
                 createProcessesTable();
 
+        processSearchField =
+                new TextField();
+
+        processSearchField.setPromptText(
+                "Search process, PID, or user..."
+        );
+
+        processSearchField.setPrefWidth(360);
+
+        processSearchField.getStyleClass()
+                .addAll(
+                        "port-search-field",
+                        "process-search-field"
+                );
+
+        processSearchField.textProperty()
+                .addListener(
+                        (observable, oldValue, newValue) ->
+                                applyProcessFilter()
+                );
+
+        HBox processFilterBar =
+                new HBox(
+                        12,
+                        processSearchField
+                );
+
+        processFilterBar.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
         VBox content = new VBox(
                 24,
                 heading,
                 tableTitle,
+                processFilterBar,
                 processesTable
         );
 
@@ -2331,12 +2374,18 @@ public final class MainView extends BorderPane {
                 memoryColumn
         );
 
-        table.setItems(
-                FXCollections.observableArrayList(
-                        processMetricsService
-                                .collectProcesses()
-                )
+        allProcesses.setAll(
+                processMetricsService
+                        .collectProcesses()
         );
+
+        filteredProcesses =
+                new FilteredList<>(
+                        allProcesses,
+                        processInfo -> true
+                );
+
+        table.setItems(filteredProcesses);
 
         table.setColumnResizePolicy(
                 TableView.CONSTRAINED_RESIZE_POLICY
@@ -2376,6 +2425,46 @@ public final class MainView extends BorderPane {
                 java.util.Locale.ROOT,
                 "%.1f GB",
                 megabytes / 1024.0
+        );
+    }
+    private void applyProcessFilter() {
+
+        if (filteredProcesses == null) {
+            return;
+        }
+
+        String query =
+                processSearchField == null
+                        ? ""
+                        : processSearchField
+                        .getText()
+                        .trim()
+                        .toLowerCase(
+                                java.util.Locale.ROOT
+                        );
+
+        filteredProcesses.setPredicate(
+                processInfo -> {
+
+                    if (query.isBlank()) {
+                        return true;
+                    }
+
+                    return String.valueOf(
+                                    processInfo.processId()
+                            )
+                            .contains(query)
+                            || processInfo.name()
+                            .toLowerCase(
+                                    java.util.Locale.ROOT
+                            )
+                            .contains(query)
+                            || processInfo.user()
+                            .toLowerCase(
+                                    java.util.Locale.ROOT
+                            )
+                            .contains(query);
+                }
         );
     }
 }
