@@ -175,6 +175,8 @@ public final class MainView extends BorderPane {
 
     private String allLogsText = "";
 
+    private ComboBox<String> logLevelFilter;
+
     public MainView() {
         getStyleClass().add("app-shell");
 
@@ -2826,8 +2828,35 @@ public final class MainView extends BorderPane {
 
     private ScrollPane createLogsPage() {
 
+        logLevelFilter =
+                new ComboBox<>();
+
+        logLevelFilter.getItems()
+                .addAll(
+                        "All levels",
+                        "Errors",
+                        "Warnings",
+                        "Info"
+                );
+
+        logLevelFilter.setValue(
+                "All levels"
+        );
+
+        logLevelFilter.setPrefWidth(140);
+        logLevelFilter.setMinHeight(38);
+
+        logLevelFilter.getStyleClass()
+                .add("log-level-filter");
+
+        logLevelFilter.setOnAction(
+                event -> refreshLogsData()
+        );
+
         allLogsText =
-                systemLogService.collectRecentLogs();
+                systemLogService.collectRecentLogs(
+                        logLevelFilter.getValue()
+                );
 
         logsTextArea =
                 new TextArea(allLogsText);
@@ -2866,9 +2895,9 @@ public final class MainView extends BorderPane {
                 new HBox(
                         12,
                         logSearchField,
+                        logLevelFilter,
                         clearLogsButton
                 );
-
         logsToolbar.setAlignment(
                 Pos.CENTER_LEFT
         );
@@ -2922,8 +2951,15 @@ public final class MainView extends BorderPane {
             return;
         }
 
+        String selectedLevel =
+                logLevelFilter == null
+                        ? "All levels"
+                        : logLevelFilter.getValue();
+
         String latestLogs =
-                systemLogService.collectRecentLogs();
+                systemLogService.collectRecentLogs(
+                        selectedLevel
+                );
 
         if (!latestLogs.equals(allLogsText)) {
             allLogsText = latestLogs;

@@ -2,12 +2,13 @@ package io.github.iroshperera.linuvera.system;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public final class SystemLogService {
 
-    private static final List<String> COMMAND = List.of(
+    private static final List<String> BASE_COMMAND = List.of(
             "journalctl",
             "--no-pager",
             "--output=short-iso",
@@ -15,10 +16,32 @@ public final class SystemLogService {
     );
 
     public String collectRecentLogs() {
+        return collectRecentLogs("All levels");
+    }
+
+    public String collectRecentLogs(String level) {
+
+        List<String> command =
+                new ArrayList<>(BASE_COMMAND);
+
+        switch (level) {
+            case "Errors" ->
+                    command.add("--priority=3");
+
+            case "Warnings" ->
+                    command.add("--priority=4");
+
+            case "Info" ->
+                    command.add("--priority=6");
+
+            default -> {
+                // Read all log levels
+            }
+        }
 
         try {
             Process process =
-                    new ProcessBuilder(COMMAND)
+                    new ProcessBuilder(command)
                             .redirectErrorStream(true)
                             .start();
 

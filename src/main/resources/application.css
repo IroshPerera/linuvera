@@ -396,3 +396,38 @@
     -fx-background-color: #f2f4f7;
     -fx-border-color: #98a2b3;
 }
+
+.log-level-filter {
+    -fx-pref-width: 140px;
+    -fx-min-height: 38px;
+
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d5dd;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+
+    -fx-font-size: 13px;
+}
+
+.log-level-filter:hover {
+    -fx-border-color: #98a2b3;
+}
+
+.log-level-filter:focused {
+    -fx-border-color: #2563eb;
+    -fx-border-width: 1.5px;
+}
+
+.log-level-filter .list-cell {
+    -fx-text-fill: #344054;
+    -fx-font-size: 13px;
+}
+
+.log-level-filter .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.log-level-filter .arrow {
+    -fx-background-color: #667085;
+}
