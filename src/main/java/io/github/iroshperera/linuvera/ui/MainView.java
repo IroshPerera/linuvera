@@ -158,6 +158,8 @@ public final class MainView extends BorderPane {
             StorageMetricsService.StorageInfo
             > storageTable;
 
+    private VBox servicesCardsContainer;
+
     public MainView() {
         getStyleClass().add("app-shell");
 
@@ -359,7 +361,7 @@ public final class MainView extends BorderPane {
             }
 
             case "Services" ->
-                    refreshServiceRows();
+                    refreshServicesData();
 
             case "Ports" ->
                     refreshPortsData();
@@ -395,6 +397,9 @@ public final class MainView extends BorderPane {
 
             case "Storage" ->
                     refreshStorageData();
+
+            case "Services" ->
+                    refreshServicesData();
 
             default -> {
                 // No automatic refresh required.
@@ -1005,12 +1010,13 @@ public final class MainView extends BorderPane {
 
         header.setAlignment(Pos.CENTER_LEFT);
 
-        VBox serviceCards = new VBox(14);
+        servicesCardsContainer =
+                new VBox(14);
 
         for (LinuxServiceStatusService.ServiceStatus serviceStatus
                 : serviceStatusService.collectStatuses()) {
 
-            serviceCards.getChildren().add(
+            servicesCardsContainer.getChildren().add(
                     createServiceDetailCard(serviceStatus)
             );
         }
@@ -1018,7 +1024,7 @@ public final class MainView extends BorderPane {
         VBox content = new VBox(
                 24,
                 header,
-                serviceCards
+                servicesCardsContainer
         );
 
         content.setPadding(
@@ -2767,5 +2773,23 @@ public final class MainView extends BorderPane {
                         )
                 )
         );
+    }
+
+    private void refreshServicesData() {
+
+        if (servicesCardsContainer == null) {
+            return;
+        }
+
+        servicesCardsContainer.getChildren()
+                .setAll(
+                        serviceStatusService
+                                .collectStatuses()
+                                .stream()
+                                .map(
+                                        this::createServiceDetailCard
+                                )
+                                .toList()
+                );
     }
 }
