@@ -6,16 +6,24 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 public final class MainView extends BorderPane {
 
+    private final StackPane pageContainer = new StackPane();
+    private Button activeButton;
+
     public MainView() {
         getStyleClass().add("app-shell");
+
+        pageContainer.setAlignment(Pos.TOP_LEFT);
+        pageContainer.getStyleClass().add("page-container");
 
         setLeft(createSidebar());
         setCenter(createMainArea());
@@ -111,8 +119,26 @@ public final class MainView extends BorderPane {
         button.getStyleClass().add("navigation-button");
 
         if (active) {
-            button.getStyleClass().add("navigation-button-active");
+            button.getStyleClass()
+                    .add("navigation-button-active");
+
+            activeButton = button;
         }
+
+        button.setOnAction(event -> {
+
+            if (activeButton != null) {
+                activeButton.getStyleClass()
+                        .remove("navigation-button-active");
+            }
+
+            button.getStyleClass()
+                    .add("navigation-button-active");
+
+            activeButton = button;
+
+            showPage(text);
+        });
 
         return button;
     }
@@ -122,8 +148,11 @@ public final class MainView extends BorderPane {
         BorderPane mainArea = new BorderPane();
 
         mainArea.setTop(createTopBar());
-        mainArea.setCenter(createDashboardContent());
 
+        pageContainer.getChildren()
+                .add(createDashboardContent());
+
+        mainArea.setCenter(pageContainer);
         mainArea.getStyleClass().add("main-area");
 
         return mainArea;
@@ -138,7 +167,8 @@ public final class MainView extends BorderPane {
                 "Monitor and manage your Linux development environment."
         );
 
-        pageSubtitle.getStyleClass().add("page-subtitle");
+        pageSubtitle.getStyleClass()
+                .add("page-subtitle");
 
         VBox pageInformation = new VBox(
                 5,
@@ -167,6 +197,64 @@ public final class MainView extends BorderPane {
         topBar.getStyleClass().add("top-bar");
 
         return topBar;
+    }
+
+    private void showPage(String pageName) {
+
+        if ("Dashboard".equals(pageName)) {
+            pageContainer.getChildren()
+                    .setAll(createDashboardContent());
+
+            return;
+        }
+
+        String description = switch (pageName) {
+            case "System Health" ->
+                    "View CPU, memory, disk, battery, and system health information.";
+
+            case "Processes" ->
+                    "Inspect running processes and resource usage.";
+
+            case "Storage" ->
+                    "Analyze disks, mount points, and available storage.";
+
+            case "Environment" ->
+                    "Check Java, Maven, Git, Docker, Node.js, and other tools.";
+
+            case "Services" ->
+                    "Monitor Linux services such as Nginx, PostgreSQL, and Docker.";
+
+            case "Ports" ->
+                    "Inspect active ports and the processes using them.";
+
+            case "Logs" ->
+                    "Read and filter system and application logs.";
+
+            default ->
+                    "This Linuvera module will be implemented soon.";
+        };
+
+        Label title = new Label(pageName);
+        title.getStyleClass().add("page-title");
+
+        Label message = new Label(description);
+        message.getStyleClass().add("page-subtitle");
+
+        VBox placeholder = new VBox(
+                12,
+                title,
+                message
+        );
+
+        placeholder.setPadding(
+                new Insets(48, 34, 34, 34)
+        );
+
+        placeholder.setAlignment(Pos.TOP_LEFT);
+        placeholder.getStyleClass().add("dashboard-content");
+
+        pageContainer.getChildren()
+                .setAll(placeholder);
     }
 
     private ScrollPane createDashboardContent() {
@@ -202,7 +290,8 @@ public final class MainView extends BorderPane {
                 ScrollPane.ScrollBarPolicy.NEVER
         );
 
-        scrollPane.getStyleClass().add("dashboard-scroll");
+        scrollPane.getStyleClass()
+                .add("dashboard-scroll");
 
         return scrollPane;
     }
@@ -247,8 +336,15 @@ public final class MainView extends BorderPane {
         grid.add(diskCard, 2, 0);
         grid.add(uptimeCard, 3, 0);
 
-        for (int column = 0; column < 4; column++) {
-            ColumnConstraintsHelper.setGrow(grid, column);
+        for (int index = 0; index < 4; index++) {
+            ColumnConstraints constraints =
+                    new ColumnConstraints();
+
+            constraints.setHgrow(Priority.ALWAYS);
+            constraints.setFillWidth(true);
+
+            grid.getColumnConstraints()
+                    .add(constraints);
         }
 
         return grid;
@@ -314,9 +410,11 @@ public final class MainView extends BorderPane {
         indicator.getStyleClass().add("status-indicator");
 
         if (healthy) {
-            indicator.getStyleClass().add("status-indicator-good");
+            indicator.getStyleClass()
+                    .add("status-indicator-good");
         } else {
-            indicator.getStyleClass().add("status-indicator-muted");
+            indicator.getStyleClass()
+                    .add("status-indicator-muted");
         }
 
         Label name = new Label(serviceName);
@@ -328,9 +426,11 @@ public final class MainView extends BorderPane {
         Label status = new Label(serviceStatus);
 
         if (healthy) {
-            status.getStyleClass().add("service-status-good");
+            status.getStyleClass()
+                    .add("service-status-good");
         } else {
-            status.getStyleClass().add("service-status-muted");
+            status.getStyleClass()
+                    .add("service-status-muted");
         }
 
         HBox row = new HBox(
@@ -344,24 +444,5 @@ public final class MainView extends BorderPane {
         row.setAlignment(Pos.CENTER_LEFT);
 
         return row;
-    }
-
-    private static final class ColumnConstraintsHelper {
-
-        private ColumnConstraintsHelper() {
-        }
-
-        private static void setGrow(
-                GridPane grid,
-                int columnIndex
-        ) {
-            javafx.scene.layout.ColumnConstraints constraints =
-                    new javafx.scene.layout.ColumnConstraints();
-
-            constraints.setHgrow(Priority.ALWAYS);
-            constraints.setFillWidth(true);
-
-            grid.getColumnConstraints().add(constraints);
-        }
     }
 }
