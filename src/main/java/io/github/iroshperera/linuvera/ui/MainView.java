@@ -485,6 +485,20 @@ public final class MainView extends BorderPane {
                 );
             }
 
+            case "Processes" -> {
+                pageTitleLabel.setText("Processes");
+                pageSubtitleLabel.setText(
+                        "Inspect running processes and resource usage."
+                );
+            }
+
+            case "Environment" -> {
+                pageTitleLabel.setText("Environment");
+                pageSubtitleLabel.setText(
+                        "Check Java, Maven, Git, Docker, Node.js, and other tools."
+                );
+            }
+
             default -> {
                 pageTitleLabel.setText(pageName);
                 pageSubtitleLabel.setText(
