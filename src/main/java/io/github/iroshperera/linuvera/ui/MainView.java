@@ -377,6 +377,12 @@ public final class MainView extends BorderPane {
                 refreshServiceRows();
             }
 
+            case "System Health" ->
+                    refreshSystemHealthData();
+
+            case "Logs" ->
+                    refreshLogsData();
+
             case "Services" ->
                     refreshServicesData();
 
