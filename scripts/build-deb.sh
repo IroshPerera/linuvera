@@ -3,8 +3,8 @@
 set -euo pipefail
 
 APP_NAME="Linuvera"
-APP_VERSION="0.1.1"
-MAIN_JAR="linuvera-desktop-0.1.0-SNAPSHOT.jar"
+APP_VERSION="0.1.2"
+MAIN_JAR="linuvera-desktop-0.1.2.jar"
 MAIN_CLASS="io.github.iroshperera.linuvera.LinuveraApplication"
 ICON_PATH="src/main/resources/packaging/linuvera-icon.png"
 

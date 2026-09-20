@@ -106,14 +106,14 @@ bash scripts/build-deb.sh
 The generated package is created at:
 
 ```text
-target/dist/linuvera_0.1.1_amd64.deb
+target/dist/linuvera_0.1.2_amd64.deb
 ```
 
 ## Install the Debian Package
 
 ```bash
 sudo apt install --reinstall \
-  ./target/dist/linuvera_0.1.1_amd64.deb
+  ./target/dist/linuvera_0.1.2_amd64.deb
 ```
 
 After installation, launch Linuvera with:

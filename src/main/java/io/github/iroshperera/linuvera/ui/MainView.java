@@ -250,7 +250,7 @@ public final class MainView extends BorderPane {
 
         VBox.setVgrow(navigation, Priority.ALWAYS);
 
-        Label version = new Label("v0.1.0-SNAPSHOT");
+        Label version = new Label("v0.1.2");
         version.getStyleClass().add("sidebar-version");
 
         VBox sidebar = new VBox(

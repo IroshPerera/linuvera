@@ -15,6 +15,20 @@ This project follows the principles of
 - CSV and JSON report export
 - Additional Linux distribution support
 
+## [0.1.2] - 2026-09-20
+
+### Changed
+
+- Updated the project version to 0.1.2.
+- Replaced the application icon with a transparent-background version.
+- Updated README badges, screenshots, and documentation.
+- Improved Debian package release metadata.
+
+### Fixed
+
+- Removed the visible black background around the application icon.
+- Updated the application version shown in the UI.
+
 ## [0.1.1] - 2026-09-20
 
 ### Added
