@@ -15,6 +15,20 @@ Linuvera is an open-source Linux developer and system support toolkit built with
 
 It gives Linux users a simple desktop application for monitoring system health, inspecting development tools, and reviewing common Linux runtime information without needing many terminal commands.
 
+## Screenshots
+
+### Dashboard
+
+![Linuvera Dashboard](docs/screenshots/dashboard.png)
+
+### System Health
+
+![Linuvera System Health](docs/screenshots/system-health.png)
+
+### Listening Ports
+
+![Linuvera Listening Ports](docs/screenshots/ports.png)
+
 ## Features
 
 ### System monitoring
