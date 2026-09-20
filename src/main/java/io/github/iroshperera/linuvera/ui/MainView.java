@@ -2,6 +2,7 @@ package io.github.iroshperera.linuvera.ui;
 
 import io.github.iroshperera.linuvera.system.SystemMetricsService;
 import io.github.iroshperera.linuvera.system.SystemMetricsService.SystemMetrics;
+import io.github.iroshperera.linuvera.system.LinuxServiceStatusService;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -48,6 +49,11 @@ public final class MainView extends BorderPane {
 
     private Label uptimeValueLabel;
     private Label uptimeStatusLabel;
+
+    private final LinuxServiceStatusService serviceStatusService =
+            new LinuxServiceStatusService();
+
+    private VBox serviceRows;
 
     public MainView() {
         getStyleClass().add("app-shell");
@@ -220,9 +226,10 @@ public final class MainView extends BorderPane {
         Button refreshButton = new Button("Refresh");
         refreshButton.getStyleClass().add("refresh-button");
 
-        refreshButton.setOnAction(event ->
-                refreshDashboardMetrics()
-        );
+        refreshButton.setOnAction(event -> {
+            refreshDashboardMetrics();
+            refreshServiceRows();
+        });
 
         HBox topBar = new HBox(
                 20,
@@ -631,13 +638,9 @@ public final class MainView extends BorderPane {
 
     private HBox createServicesCard() {
 
-        VBox serviceRows = new VBox(
-                12,
-                createServiceRow("Nginx", "Running", true),
-                createServiceRow("PostgreSQL", "Running", true),
-                createServiceRow("Docker", "Not detected", false),
-                createServiceRow("Redis", "Not detected", false)
-        );
+        serviceRows = new VBox(12);
+
+        refreshServiceRows();
 
         HBox card = new HBox(serviceRows);
 
@@ -648,6 +651,27 @@ public final class MainView extends BorderPane {
         card.getStyleClass().add("services-card");
 
         return card;
+    }
+
+    private void refreshServiceRows() {
+
+        if (serviceRows == null) {
+            return;
+        }
+
+        serviceRows.getChildren().clear();
+
+        for (LinuxServiceStatusService.ServiceStatus serviceStatus
+                : serviceStatusService.collectStatuses()) {
+
+            serviceRows.getChildren().add(
+                    createServiceRow(
+                            serviceStatus.displayName(),
+                            serviceStatus.status(),
+                            serviceStatus.running()
+                    )
+            );
+        }
     }
 
     private HBox createServiceRow(
