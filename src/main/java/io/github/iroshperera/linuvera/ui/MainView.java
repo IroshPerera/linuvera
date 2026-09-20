@@ -30,6 +30,9 @@ import javafx.collections.transformation.FilteredList;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 import io.github.iroshperera.linuvera.system.EnvironmentDetectionService;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
 
 import java.util.List;
 
@@ -93,6 +96,38 @@ public final class MainView extends BorderPane {
     private final EnvironmentDetectionService
             environmentDetectionService =
             new EnvironmentDetectionService();
+
+    private static final int CHART_HISTORY_LIMIT = 30;
+
+    private final XYChart.Series<Number, Number>
+            cpuChartSeries = new XYChart.Series<>();
+
+    private final XYChart.Series<Number, Number>
+            memoryChartSeries = new XYChart.Series<>();
+
+    private final XYChart.Series<Number, Number>
+            diskChartSeries = new XYChart.Series<>();
+
+    private int chartSampleIndex = 0;
+
+    private LineChart<Number, Number> cpuChart;
+    private LineChart<Number, Number> memoryChart;
+    private LineChart<Number, Number> diskChart;
+
+    private Label healthCpuValueLabel;
+    private Label healthCpuStatusLabel;
+
+    private Label healthMemoryValueLabel;
+    private Label healthMemoryStatusLabel;
+
+    private Label healthDiskValueLabel;
+    private Label healthDiskStatusLabel;
+
+    private Label healthUptimeValueLabel;
+    private Label healthUptimeStatusLabel;
+
+    private Label healthOperatingSystemValueLabel;
+    private Label healthOperatingSystemStatusLabel;
 
     public MainView() {
         getStyleClass().add("app-shell");
@@ -317,11 +352,16 @@ public final class MainView extends BorderPane {
             case "Ports" ->
                     refreshPortsData();
 
+            case "System Health" ->
+                    refreshSystemHealthData();
+
             default -> {
                 // No automatic refresh required.
             }
         }
     }
+
+
 
     private void updateTopBar(String pageName) {
 
@@ -372,6 +412,13 @@ public final class MainView extends BorderPane {
 
         currentPage = pageName;
         updateTopBar(pageName);
+
+        if ("System Health".equals(pageName)) {
+            pageContainer.getChildren()
+                    .setAll(createSystemHealthPage());
+
+            return;
+        }
 
         if ("Environment".equals(pageName)) {
             pageContainer.getChildren()
@@ -442,6 +489,305 @@ public final class MainView extends BorderPane {
 
         pageContainer.getChildren()
                 .setAll(placeholder);
+    }
+
+    private ScrollPane createSystemHealthPage() {
+
+        SystemMetricsService.SystemMetrics metrics =
+                metricsService.collectMetrics();
+
+        Label sectionTitle =
+                new Label("System Health Summary");
+
+        sectionTitle.getStyleClass()
+                .add("section-title");
+
+        Label sectionSubtitle =
+                new Label(
+                        "Live health information from this Linux machine."
+                );
+
+        sectionSubtitle.getStyleClass()
+                .add("page-subtitle");
+
+        VBox heading = new VBox(
+                6,
+                sectionTitle,
+                sectionSubtitle
+        );
+
+        double memoryUsagePercent = 0;
+
+        if (metrics.totalMemoryBytes() > 0) {
+            memoryUsagePercent =
+                    metrics.usedMemoryBytes()
+                            * 100.0
+                            / metrics.totalMemoryBytes();
+        }
+
+        updateHealthChartSeries(metrics);
+
+        GridPane metricGrid = new GridPane();
+
+        metricGrid.setHgap(16);
+        metricGrid.setVgap(16);
+
+        metricGrid.add(
+                createHealthMetricCard(
+                        "CPU Usage",
+                        String.format(
+                                java.util.Locale.ROOT,
+                                "%.1f%%",
+                                metrics.cpuUsagePercent()
+                        ),
+                        metrics.cpuUsagePercent() < 80
+                                ? "Healthy"
+                                : "High usage",
+                        "metric-card-blue"
+                ),
+                0,
+                0
+        );
+
+        metricGrid.add(
+                createHealthMetricCard(
+                        "Memory Usage",
+                        formatHealthBytes(
+                                metrics.usedMemoryBytes()
+                        ),
+                        String.format(
+                                java.util.Locale.ROOT,
+                                "%.1f%% of %s",
+                                memoryUsagePercent,
+                                formatHealthBytes(
+                                        metrics.totalMemoryBytes()
+                                )
+                        ),
+                        "metric-card-purple"
+                ),
+                1,
+                0
+        );
+
+        metricGrid.add(
+                createHealthMetricCard(
+                        "Disk Usage",
+                        String.format(
+                                java.util.Locale.ROOT,
+                                "%.1f%%",
+                                metrics.diskUsagePercent()
+                        ),
+                        formatHealthBytes(
+                                metrics.usedDiskBytes()
+                        )
+                                + " used",
+                        "metric-card-orange"
+                ),
+                2,
+                0
+        );
+
+        metricGrid.add(
+                createHealthMetricCard(
+                        "System Uptime",
+                        formatHealthUptime(
+                                metrics.uptimeSeconds()
+                        ),
+                        "System running",
+                        "metric-card-green"
+                ),
+                3,
+                0
+        );
+
+        metricGrid.add(
+                createHealthMetricCard(
+                        "Operating System",
+                        metrics.osFamily(),
+                        metrics.osVersion(),
+                        "metric-card-green"
+                ),
+                0,
+                1
+        );
+
+        cpuChart =
+                createMiniLineChart(cpuChartSeries);
+
+        memoryChart =
+                createMiniLineChart(memoryChartSeries);
+
+        diskChart =
+                createMiniLineChart(diskChartSeries);
+
+        GridPane chartGrid = new GridPane();
+
+        chartGrid.setHgap(16);
+        chartGrid.setVgap(16);
+
+        chartGrid.add(
+                createHealthChartCard(
+                        "CPU Usage Trend",
+                        cpuChart,
+                        "metric-card-blue"
+                ),
+                0,
+                0
+        );
+
+        chartGrid.add(
+                createHealthChartCard(
+                        "Memory Usage Trend",
+                        memoryChart,
+                        "metric-card-purple"
+                ),
+                1,
+                0
+        );
+
+        chartGrid.add(
+                createHealthChartCard(
+                        "Disk Usage Trend",
+                        diskChart,
+                        "metric-card-orange"
+                ),
+                2,
+                0
+        );
+
+        VBox content = new VBox(
+                24,
+                heading,
+                metricGrid,
+                chartGrid
+        );
+
+        content.setPadding(
+                new Insets(34)
+        );
+
+        content.getStyleClass()
+                .add("dashboard-content");
+
+        ScrollPane scrollPane =
+                new ScrollPane(content);
+
+        scrollPane.setFitToWidth(true);
+
+        scrollPane.setHbarPolicy(
+                ScrollPane.ScrollBarPolicy.NEVER
+        );
+
+        scrollPane.getStyleClass()
+                .add("dashboard-scroll");
+
+        return scrollPane;
+    }
+
+    private VBox createHealthMetricCard(
+            String title,
+            String value,
+            String status,
+            String colorClass
+    ) {
+        Label titleLabel =
+                new Label(title);
+
+        titleLabel.getStyleClass()
+                .add("metric-title");
+
+        Label valueLabel =
+                new Label(value);
+
+        valueLabel.getStyleClass()
+                .add("metric-value");
+
+        valueLabel.setWrapText(true);
+
+        Label statusLabel =
+                new Label(status);
+
+        statusLabel.getStyleClass()
+                .add("metric-status");
+
+        VBox card = new VBox(
+                12,
+                titleLabel,
+                valueLabel,
+                statusLabel
+        );
+
+        card.getStyleClass()
+                .addAll(
+                        "metric-card",
+                        colorClass
+                );
+
+        switch (title) {
+            case "CPU Usage" -> {
+                healthCpuValueLabel = valueLabel;
+                healthCpuStatusLabel = statusLabel;
+            }
+
+            case "Memory Usage" -> {
+                healthMemoryValueLabel = valueLabel;
+                healthMemoryStatusLabel = statusLabel;
+            }
+
+            case "Disk Usage" -> {
+                healthDiskValueLabel = valueLabel;
+                healthDiskStatusLabel = statusLabel;
+            }
+
+            case "System Uptime" -> {
+                healthUptimeValueLabel = valueLabel;
+                healthUptimeStatusLabel = statusLabel;
+            }
+
+            case "Operating System" -> {
+                healthOperatingSystemValueLabel = valueLabel;
+                healthOperatingSystemStatusLabel = statusLabel;
+            }
+
+            default -> {
+            }
+        }
+
+        return card;
+    }
+
+    private String formatHealthBytes(
+            long bytes
+    ) {
+        double gigabytes =
+                bytes / (1024.0 * 1024.0 * 1024.0);
+
+        return String.format(
+                java.util.Locale.ROOT,
+                "%.1f GB",
+                gigabytes
+        );
+    }
+
+    private String formatHealthUptime(
+            long uptimeSeconds
+    ) {
+        long days =
+                uptimeSeconds / 86_400;
+
+        long hours =
+                (uptimeSeconds % 86_400) / 3_600;
+
+        long minutes =
+                (uptimeSeconds % 3_600) / 60;
+
+        return String.format(
+                java.util.Locale.ROOT,
+                "%dd %02dh %02dm",
+                days,
+                hours,
+                minutes
+        );
     }
 
     private ScrollPane createEnvironmentPage() {
@@ -748,6 +1094,94 @@ public final class MainView extends BorderPane {
                 .add("dashboard-scroll");
 
         return scrollPane;
+    }
+
+    private void refreshSystemHealthData() {
+
+        if (healthCpuValueLabel == null
+                || healthMemoryValueLabel == null
+                || healthDiskValueLabel == null
+                || healthUptimeValueLabel == null
+                || healthOperatingSystemValueLabel == null) {
+            return;
+        }
+
+        SystemMetricsService.SystemMetrics metrics =
+                metricsService.collectMetrics();
+
+        double memoryUsagePercent = 0;
+
+        if (metrics.totalMemoryBytes() > 0) {
+            memoryUsagePercent =
+                    metrics.usedMemoryBytes()
+                            * 100.0
+                            / metrics.totalMemoryBytes();
+        }
+
+        healthCpuValueLabel.setText(
+                String.format(
+                        java.util.Locale.ROOT,
+                        "%.1f%%",
+                        metrics.cpuUsagePercent()
+                )
+        );
+
+        healthCpuStatusLabel.setText(
+                metrics.cpuUsagePercent() < 80
+                        ? "Healthy"
+                        : "High usage"
+        );
+
+        healthMemoryValueLabel.setText(
+                formatHealthBytes(
+                        metrics.usedMemoryBytes()
+                )
+        );
+
+        healthMemoryStatusLabel.setText(
+                String.format(
+                        java.util.Locale.ROOT,
+                        "%.1f%% of %s",
+                        memoryUsagePercent,
+                        formatHealthBytes(
+                                metrics.totalMemoryBytes()
+                        )
+                )
+        );
+
+        healthDiskValueLabel.setText(
+                String.format(
+                        java.util.Locale.ROOT,
+                        "%.1f%%",
+                        metrics.diskUsagePercent()
+                )
+        );
+
+        healthDiskStatusLabel.setText(
+                formatHealthBytes(
+                        metrics.usedDiskBytes()
+                ) + " used"
+        );
+
+        healthUptimeValueLabel.setText(
+                formatHealthUptime(
+                        metrics.uptimeSeconds()
+                )
+        );
+
+        healthUptimeStatusLabel.setText(
+                "System running"
+        );
+
+        healthOperatingSystemValueLabel.setText(
+                metrics.osFamily()
+        );
+
+        healthOperatingSystemStatusLabel.setText(
+                metrics.osVersion()
+        );
+
+        updateHealthChartSeries(metrics);
     }
 
     private void refreshPortsData() {
@@ -1580,5 +2014,118 @@ public final class MainView extends BorderPane {
         row.setAlignment(Pos.CENTER_LEFT);
 
         return row;
+    }
+
+    private LineChart<Number, Number> createMiniLineChart(
+            XYChart.Series<Number, Number> series
+    ) {
+        NumberAxis xAxis = new NumberAxis();
+        NumberAxis yAxis = new NumberAxis(
+                0,
+                100,
+                25
+        );
+
+        xAxis.setVisible(false);
+        yAxis.setVisible(false);
+
+        LineChart<Number, Number> chart =
+                new LineChart<>(
+                        xAxis,
+                        yAxis
+                );
+
+        chart.getData().add(series);
+
+        chart.setLegendVisible(false);
+        chart.setAnimated(false);
+        chart.setCreateSymbols(false);
+
+        chart.setHorizontalGridLinesVisible(false);
+        chart.setVerticalGridLinesVisible(false);
+
+        chart.setMinHeight(110);
+        chart.setPrefHeight(110);
+        chart.setMaxHeight(110);
+
+        return chart;
+    }
+
+    private VBox createHealthChartCard(
+            String title,
+            LineChart<Number, Number> chart,
+            String colorClass
+    ) {
+        Label titleLabel =
+                new Label(title);
+
+        titleLabel.getStyleClass()
+                .add("metric-title");
+
+        VBox card = new VBox(
+                8,
+                titleLabel,
+                chart
+        );
+
+        card.getStyleClass()
+                .addAll(
+                        "metric-card",
+                        "health-chart-card",
+                        colorClass
+                );
+
+        card.setPrefWidth(300);
+
+        return card;
+    }
+
+    private void updateHealthChartSeries(
+            SystemMetricsService.SystemMetrics metrics
+    ) {
+        chartSampleIndex++;
+
+        addChartPoint(
+                cpuChartSeries,
+                metrics.cpuUsagePercent()
+        );
+
+        double memoryUsagePercent = 0;
+
+        if (metrics.totalMemoryBytes() > 0) {
+            memoryUsagePercent =
+                    metrics.usedMemoryBytes()
+                            * 100.0
+                            / metrics.totalMemoryBytes();
+        }
+
+        addChartPoint(
+                memoryChartSeries,
+                memoryUsagePercent
+        );
+
+        addChartPoint(
+                diskChartSeries,
+                metrics.diskUsagePercent()
+        );
+    }
+
+    private void addChartPoint(
+            XYChart.Series<Number, Number> series,
+            double value
+    ) {
+        series.getData().add(
+                new XYChart.Data<>(
+                        chartSampleIndex,
+                        value
+                )
+        );
+
+        while (
+                series.getData().size()
+                        > CHART_HISTORY_LIMIT
+        ) {
+            series.getData().remove(0);
+        }
     }
 }
