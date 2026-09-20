@@ -352,3 +352,47 @@
 .logs-text-area .content {
     -fx-background-color: #101828;
 }
+
+.logs-search-field {
+    -fx-pref-width: 320px;
+    -fx-min-height: 38px;
+    -fx-padding: 0 14px;
+
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #101828;
+    -fx-prompt-text-fill: #98a2b3;
+
+    -fx-border-color: #d0d5dd;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+
+    -fx-font-size: 13px;
+}
+
+.logs-search-field:hover {
+    -fx-border-color: #98a2b3;
+}
+
+.logs-search-field:focused {
+    -fx-border-color: #2563eb;
+    -fx-border-width: 1.5px;
+}
+
+.clear-button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #344054;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 9px 16px;
+    -fx-border-color: #d0d5dd;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+
+.clear-button:hover {
+    -fx-background-color: #f2f4f7;
+    -fx-border-color: #98a2b3;
+}

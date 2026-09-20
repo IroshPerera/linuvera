@@ -2839,8 +2839,12 @@ public final class MainView extends BorderPane {
                 "Search logs..."
         );
 
+        logSearchField.setPrefWidth(320);
+        logSearchField.setMinWidth(320);
+        logSearchField.setMaxWidth(320);
+
         logSearchField.getStyleClass()
-                .add("search-field");
+                .add("logs-search-field");
 
         logSearchField.textProperty()
                 .addListener(
@@ -2848,10 +2852,21 @@ public final class MainView extends BorderPane {
                                 applyLogFilter()
                 );
 
+        Button clearLogsButton =
+                new Button("Clear");
+
+        clearLogsButton.getStyleClass()
+                .add("clear-button");
+
+        clearLogsButton.setOnAction(
+                event -> logSearchField.clear()
+        );
+
         HBox logsToolbar =
                 new HBox(
                         12,
-                        logSearchField
+                        logSearchField,
+                        clearLogsButton
                 );
 
         logsToolbar.setAlignment(
