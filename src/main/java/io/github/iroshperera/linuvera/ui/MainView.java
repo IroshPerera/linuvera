@@ -33,6 +33,7 @@ import io.github.iroshperera.linuvera.system.EnvironmentDetectionService;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
+import io.github.iroshperera.linuvera.system.ProcessMetricsService;
 
 import java.util.List;
 
@@ -128,6 +129,14 @@ public final class MainView extends BorderPane {
 
     private Label healthOperatingSystemValueLabel;
     private Label healthOperatingSystemStatusLabel;
+
+    private final ProcessMetricsService
+            processMetricsService =
+            new ProcessMetricsService();
+
+    private TableView<
+            ProcessMetricsService.ProcessInfo
+            > processesTable;
 
     public MainView() {
         getStyleClass().add("app-shell");
@@ -339,6 +348,9 @@ public final class MainView extends BorderPane {
                     pageContainer.getChildren()
                             .setAll(createEnvironmentPage());
 
+            case "Processes" ->
+                    refreshProcessesData();
+
             default ->
                     showPage(currentPage);
         }
@@ -354,6 +366,9 @@ public final class MainView extends BorderPane {
 
             case "System Health" ->
                     refreshSystemHealthData();
+
+            case "Processes" ->
+                    refreshProcessesData();
 
             default -> {
                 // No automatic refresh required.
@@ -412,6 +427,13 @@ public final class MainView extends BorderPane {
 
         currentPage = pageName;
         updateTopBar(pageName);
+
+        if ("Processes".equals(pageName)) {
+            pageContainer.getChildren()
+                    .setAll(createProcessesPage());
+
+            return;
+        }
 
         if ("System Health".equals(pageName)) {
             pageContainer.getChildren()
@@ -1182,6 +1204,19 @@ public final class MainView extends BorderPane {
         );
 
         updateHealthChartSeries(metrics);
+    }
+
+    private void refreshProcessesData() {
+
+        if (processesTable == null) {
+            return;
+        }
+
+        processesTable.getItems()
+                .setAll(
+                        processMetricsService
+                                .collectProcesses()
+                );
     }
 
     private void refreshPortsData() {
@@ -2127,5 +2162,220 @@ public final class MainView extends BorderPane {
         ) {
             series.getData().remove(0);
         }
+    }
+
+    private ScrollPane createProcessesPage() {
+
+        Label title =
+                new Label("Running Processes");
+
+        title.getStyleClass()
+                .add("section-title");
+
+        Label subtitle =
+                new Label(
+                        "Inspect active processes and resource usage."
+                );
+
+        subtitle.getStyleClass()
+                .add("page-subtitle");
+
+        VBox heading = new VBox(
+                6,
+                title,
+                subtitle
+        );
+
+        Label tableTitle =
+                new Label("Top Processes");
+
+        tableTitle.getStyleClass()
+                .add("section-title");
+
+        processesTable =
+                createProcessesTable();
+
+        VBox content = new VBox(
+                24,
+                heading,
+                tableTitle,
+                processesTable
+        );
+
+        content.setPadding(
+                new Insets(34)
+        );
+
+        content.getStyleClass()
+                .add("dashboard-content");
+
+        ScrollPane scrollPane =
+                new ScrollPane(content);
+
+        scrollPane.setFitToWidth(true);
+
+        scrollPane.setHbarPolicy(
+                ScrollPane.ScrollBarPolicy.NEVER
+        );
+
+        scrollPane.getStyleClass()
+                .add("dashboard-scroll");
+
+        return scrollPane;
+    }
+
+    private TableView<
+            ProcessMetricsService.ProcessInfo
+            > createProcessesTable() {
+
+        TableView<
+                ProcessMetricsService.ProcessInfo
+                > table =
+                new TableView<>();
+
+        TableColumn<
+                ProcessMetricsService.ProcessInfo,
+                String
+                > pidColumn =
+                new TableColumn<>("PID");
+
+        pidColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                String.valueOf(
+                                        data.getValue()
+                                                .processId()
+                                )
+                        )
+        );
+
+        TableColumn<
+                ProcessMetricsService.ProcessInfo,
+                String
+                > nameColumn =
+                new TableColumn<>("Process");
+
+        nameColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                data.getValue().name()
+                        )
+        );
+
+        TableColumn<
+                ProcessMetricsService.ProcessInfo,
+                String
+                > userColumn =
+                new TableColumn<>("User");
+
+        userColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                data.getValue().user()
+                        )
+        );
+
+        TableColumn<
+                ProcessMetricsService.ProcessInfo,
+                String
+                > stateColumn =
+                new TableColumn<>("State");
+
+        stateColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                data.getValue().state()
+                        )
+        );
+
+        TableColumn<
+                ProcessMetricsService.ProcessInfo,
+                String
+                > cpuColumn =
+                new TableColumn<>("CPU");
+
+        cpuColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                String.format(
+                                        java.util.Locale.ROOT,
+                                        "%.1f%%",
+                                        data.getValue()
+                                                .cpuUsagePercent()
+                                )
+                        )
+        );
+
+        TableColumn<
+                ProcessMetricsService.ProcessInfo,
+                String
+                > memoryColumn =
+                new TableColumn<>("Memory");
+
+        memoryColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                formatProcessMemory(
+                                        data.getValue()
+                                                .memoryBytes()
+                                )
+                        )
+        );
+
+        table.getColumns().addAll(
+                pidColumn,
+                nameColumn,
+                userColumn,
+                stateColumn,
+                cpuColumn,
+                memoryColumn
+        );
+
+        table.setItems(
+                FXCollections.observableArrayList(
+                        processMetricsService
+                                .collectProcesses()
+                )
+        );
+
+        table.setColumnResizePolicy(
+                TableView.CONSTRAINED_RESIZE_POLICY
+        );
+
+        table.setPrefHeight(560);
+
+        table.setPlaceholder(
+                new Label("No process data available.")
+        );
+
+        table.getStyleClass()
+                .add("ports-table");
+
+        return table;
+    }
+
+    private String formatProcessMemory(
+            long bytes
+    ) {
+        if (bytes < 1024 * 1024) {
+            return (bytes / 1024) + " KB";
+        }
+
+        double megabytes =
+                bytes / (1024.0 * 1024.0);
+
+        if (megabytes < 1024) {
+            return String.format(
+                    java.util.Locale.ROOT,
+                    "%.1f MB",
+                    megabytes
+            );
+        }
+
+        return String.format(
+                java.util.Locale.ROOT,
+                "%.1f GB",
+                megabytes / 1024.0
+        );
     }
 }
