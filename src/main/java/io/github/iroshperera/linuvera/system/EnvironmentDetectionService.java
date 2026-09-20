@@ -33,10 +33,6 @@ public final class EnvironmentDetectionService {
                     List.of("psql", "--version")
             ),
             new ToolDefinition(
-                    "MySQL",
-                    List.of("mysql", "--version")
-            ),
-            new ToolDefinition(
                     "Redis",
                     List.of("redis-server", "--version")
             )
