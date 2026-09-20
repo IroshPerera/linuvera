@@ -29,6 +29,7 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
+import io.github.iroshperera.linuvera.system.EnvironmentDetectionService;
 
 import java.util.List;
 
@@ -88,6 +89,10 @@ public final class MainView extends BorderPane {
 
     private TextField portSearchField;
     private ComboBox<String> protocolFilter;
+
+    private final EnvironmentDetectionService
+            environmentDetectionService =
+            new EnvironmentDetectionService();
 
     public MainView() {
         getStyleClass().add("app-shell");
@@ -295,6 +300,10 @@ public final class MainView extends BorderPane {
             case "Ports" ->
                     refreshPortsData();
 
+            case "Environment" ->
+                    pageContainer.getChildren()
+                            .setAll(createEnvironmentPage());
+
             default ->
                     showPage(currentPage);
         }
@@ -364,6 +373,13 @@ public final class MainView extends BorderPane {
         currentPage = pageName;
         updateTopBar(pageName);
 
+        if ("Environment".equals(pageName)) {
+            pageContainer.getChildren()
+                    .setAll(createEnvironmentPage());
+
+            return;
+        }
+
         if ("Services".equals(pageName)) {
             pageContainer.getChildren()
                     .setAll(createServicesPage());
@@ -426,6 +442,135 @@ public final class MainView extends BorderPane {
 
         pageContainer.getChildren()
                 .setAll(placeholder);
+    }
+
+    private ScrollPane createEnvironmentPage() {
+
+        Label sectionTitle = new Label("Detected tools");
+        sectionTitle.getStyleClass().add("section-title");
+
+        Label description = new Label(
+                "Check developer tools installed on this Linux machine."
+        );
+        description.getStyleClass().add("page-subtitle");
+
+        VBox toolCards = new VBox(14);
+
+        for (EnvironmentDetectionService.DetectedTool tool
+                : environmentDetectionService.detectTools()) {
+
+            toolCards.getChildren().add(
+                    createToolCard(tool)
+            );
+        }
+
+        VBox content = new VBox(
+                12,
+                sectionTitle,
+                description,
+                toolCards
+        );
+
+        content.setPadding(
+                new Insets(34)
+        );
+
+        content.getStyleClass().add("dashboard-content");
+
+        ScrollPane scrollPane = new ScrollPane(content);
+
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(
+                ScrollPane.ScrollBarPolicy.NEVER
+        );
+
+        scrollPane.getStyleClass()
+                .add("dashboard-scroll");
+
+        return scrollPane;
+    }
+
+    private VBox createToolCard(
+            EnvironmentDetectionService.DetectedTool tool
+    ) {
+        Label indicator = new Label();
+        indicator.getStyleClass().add("status-indicator");
+
+        if (tool.detected()) {
+            indicator.getStyleClass()
+                    .add("status-indicator-good");
+        } else {
+            indicator.getStyleClass()
+                    .add("status-indicator-muted");
+        }
+
+        Label toolName = new Label(
+                tool.name()
+        );
+        toolName.getStyleClass().add("service-name");
+
+        Label command = new Label(
+                tool.command()
+        );
+        command.getStyleClass().add("page-subtitle");
+
+        VBox information = new VBox(
+                5,
+                toolName,
+                command
+        );
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label status = new Label(
+                tool.detected()
+                        ? "Detected"
+                        : "Not detected"
+        );
+
+        if (tool.detected()) {
+            status.getStyleClass()
+                    .add("service-status-good");
+        } else {
+            status.getStyleClass()
+                    .add("service-status-muted");
+        }
+
+        Label version = new Label(
+                tool.version()
+        );
+        version.getStyleClass().add("page-subtitle");
+
+        VBox result = new VBox(
+                4,
+                status,
+                version
+        );
+
+        result.setAlignment(Pos.CENTER_RIGHT);
+
+        HBox header = new HBox(
+                12,
+                indicator,
+                information,
+                spacer,
+                result
+        );
+
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        VBox card = new VBox(
+                header
+        );
+
+        card.setPadding(
+                new Insets(20)
+        );
+
+        card.getStyleClass().add("services-card");
+
+        return card;
     }
 
     private ScrollPane createServicesPage() {
