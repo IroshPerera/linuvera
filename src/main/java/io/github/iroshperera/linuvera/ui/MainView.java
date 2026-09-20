@@ -3,6 +3,7 @@ package io.github.iroshperera.linuvera.ui;
 import io.github.iroshperera.linuvera.system.SystemMetricsService;
 import io.github.iroshperera.linuvera.system.SystemMetricsService.SystemMetrics;
 import io.github.iroshperera.linuvera.system.LinuxServiceStatusService;
+import io.github.iroshperera.linuvera.system.LinuxPortService;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -20,6 +21,9 @@ import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.util.Duration;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 
 import java.util.Locale;
 
@@ -54,6 +58,14 @@ public final class MainView extends BorderPane {
             new LinuxServiceStatusService();
 
     private VBox serviceRows;
+
+    private final LinuxPortService portService =
+            new LinuxPortService();
+
+    private String currentPage = "Dashboard";
+
+    private Label pageTitleLabel;
+    private Label pageSubtitleLabel;
 
     public MainView() {
         getStyleClass().add("app-shell");
@@ -204,20 +216,20 @@ public final class MainView extends BorderPane {
 
     private HBox createTopBar() {
 
-        Label pageTitle = new Label("System Overview");
-        pageTitle.getStyleClass().add("page-title");
+        pageTitleLabel = new Label("System Overview");
+        pageTitleLabel.getStyleClass().add("page-title");
 
-        Label pageSubtitle = new Label(
+        pageSubtitleLabel = new Label(
                 "Monitor and manage your Linux development environment."
         );
 
-        pageSubtitle.getStyleClass()
+        pageSubtitleLabel.getStyleClass()
                 .add("page-subtitle");
 
         VBox pageInformation = new VBox(
                 5,
-                pageTitle,
-                pageSubtitle
+                pageTitleLabel,
+                pageSubtitleLabel
         );
 
         Region spacer = new Region();
@@ -226,10 +238,9 @@ public final class MainView extends BorderPane {
         Button refreshButton = new Button("Refresh");
         refreshButton.getStyleClass().add("refresh-button");
 
-        refreshButton.setOnAction(event -> {
-            refreshDashboardMetrics();
-            refreshServiceRows();
-        });
+        refreshButton.setOnAction(event ->
+                refreshCurrentPage()
+        );
 
         HBox topBar = new HBox(
                 20,
@@ -248,10 +259,87 @@ public final class MainView extends BorderPane {
         return topBar;
     }
 
+    private void refreshCurrentPage() {
+
+        switch (currentPage) {
+            case "Dashboard" -> {
+                refreshDashboardMetrics();
+                refreshServiceRows();
+            }
+
+            case "Services" ->
+                    pageContainer.getChildren()
+                            .setAll(createServicesPage());
+
+            case "Ports" ->
+                    pageContainer.getChildren()
+                            .setAll(createPortsPage());
+
+            default ->
+                    showPage(currentPage);
+        }
+    }
+
+    private void updateTopBar(String pageName) {
+
+        if (pageTitleLabel == null
+                || pageSubtitleLabel == null) {
+            return;
+        }
+
+        switch (pageName) {
+            case "Dashboard" -> {
+                pageTitleLabel.setText("System Overview");
+                pageSubtitleLabel.setText(
+                        "Monitor and manage your Linux development environment."
+                );
+            }
+
+            case "Services" -> {
+                pageTitleLabel.setText("Linux Services");
+                pageSubtitleLabel.setText(
+                        "Monitor systemd services running on this machine."
+                );
+            }
+
+            case "Ports" -> {
+                pageTitleLabel.setText("Listening Ports");
+                pageSubtitleLabel.setText(
+                        "Inspect active TCP and UDP ports."
+                );
+            }
+
+            case "System Health" -> {
+                pageTitleLabel.setText("System Health");
+                pageSubtitleLabel.setText(
+                        "Review the health of your Linux system."
+                );
+            }
+
+            default -> {
+                pageTitleLabel.setText(pageName);
+                pageSubtitleLabel.setText(
+                        "Linuvera Linux developer toolkit."
+                );
+            }
+        }
+    }
+
     private void showPage(String pageName) {
+
+        currentPage = pageName;
+        updateTopBar(pageName);
+
         if ("Services".equals(pageName)) {
             pageContainer.getChildren()
                     .setAll(createServicesPage());
+
+            return;
+        }
+
+        if ("Ports".equals(pageName)) {
+            pageContainer.getChildren()
+                    .setAll(createPortsPage());
 
             return;
         }
@@ -330,22 +418,9 @@ public final class MainView extends BorderPane {
                 subtitle
         );
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Button refreshButton = new Button("Refresh services");
-        refreshButton.getStyleClass().add("refresh-button");
-
-        refreshButton.setOnAction(event ->
-                pageContainer.getChildren()
-                        .setAll(createServicesPage())
-        );
-
         HBox header = new HBox(
                 20,
-                heading,
-                spacer,
-                refreshButton
+                heading
         );
 
         header.setAlignment(Pos.CENTER_LEFT);
@@ -451,6 +526,167 @@ public final class MainView extends BorderPane {
         card.getStyleClass().add("services-card");
 
         return card;
+    }
+
+    private ScrollPane createPortsPage() {
+
+        Label sectionTitle = new Label("Active listeners");
+        sectionTitle.getStyleClass().add("section-title");
+
+        TableView<LinuxPortService.PortInfo> table =
+                createPortsTable();
+
+        VBox content = new VBox(
+                18,
+                sectionTitle,
+                table
+        );
+
+        content.setPadding(
+                new Insets(34)
+        );
+
+        content.getStyleClass().add("dashboard-content");
+
+        ScrollPane scrollPane = new ScrollPane(content);
+
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(
+                ScrollPane.ScrollBarPolicy.NEVER
+        );
+
+        scrollPane.getStyleClass()
+                .add("dashboard-scroll");
+
+        return scrollPane;
+    }
+
+    private TableView<LinuxPortService.PortInfo>
+    createPortsTable() {
+
+        TableView<LinuxPortService.PortInfo> table =
+                new TableView<>();
+
+        TableColumn<
+                LinuxPortService.PortInfo,
+                String
+                > protocolColumn =
+                new TableColumn<>("Protocol");
+
+        protocolColumn.setCellValueFactory(data ->
+                new ReadOnlyStringWrapper(
+                        data.getValue()
+                                .protocol()
+                                .toUpperCase(Locale.ROOT)
+                )
+        );
+
+        TableColumn<
+                LinuxPortService.PortInfo,
+                String
+                > stateColumn =
+                new TableColumn<>("State");
+
+        stateColumn.setCellValueFactory(data ->
+                new ReadOnlyStringWrapper(
+                        data.getValue().state()
+                )
+        );
+
+        TableColumn<
+                LinuxPortService.PortInfo,
+                String
+                > addressColumn =
+                new TableColumn<>("Local Address");
+
+        addressColumn.setCellValueFactory(data ->
+                new ReadOnlyStringWrapper(
+                        data.getValue().localAddress()
+                )
+        );
+
+        TableColumn<
+                LinuxPortService.PortInfo,
+                String
+                > portColumn =
+                new TableColumn<>("Port");
+
+        portColumn.setCellValueFactory(data ->
+                new ReadOnlyStringWrapper(
+                        String.valueOf(
+                                data.getValue().port()
+                        )
+                )
+        );
+
+        TableColumn<
+                LinuxPortService.PortInfo,
+                String
+                > processColumn =
+                new TableColumn<>("Process");
+
+        processColumn.setCellValueFactory(data ->
+                new ReadOnlyStringWrapper(
+                        data.getValue().processName()
+                )
+        );
+
+        TableColumn<
+                LinuxPortService.PortInfo,
+                String
+                > pidColumn =
+                new TableColumn<>("PID");
+
+        pidColumn.setCellValueFactory(data ->
+                new ReadOnlyStringWrapper(
+                        data.getValue().processId() == 0
+                                ? "Unknown"
+                                : String.valueOf(
+                                data.getValue().processId()
+                        )
+                )
+        );
+
+        table.getColumns().addAll(
+                protocolColumn,
+                stateColumn,
+                addressColumn,
+                portColumn,
+                processColumn,
+                pidColumn
+        );
+
+        protocolColumn.setPrefWidth(100);
+        stateColumn.setPrefWidth(110);
+        addressColumn.setPrefWidth(260);
+        portColumn.setPrefWidth(90);
+        processColumn.setPrefWidth(180);
+        pidColumn.setPrefWidth(100);
+
+        table.setColumnResizePolicy(
+                TableView.CONSTRAINED_RESIZE_POLICY
+        );
+
+        table.setPrefHeight(520);
+        table.setPlaceholder(
+                new Label("No listening ports detected.")
+        );
+
+        table.getStyleClass().add("ports-table");
+
+        try {
+            table.getItems().setAll(
+                    portService.collectPorts()
+            );
+        } catch (RuntimeException exception) {
+            table.setPlaceholder(
+                    new Label(
+                            "Unable to read listening ports."
+                    )
+            );
+        }
+
+        return table;
     }
 
     private ScrollPane createDashboardContent() {
