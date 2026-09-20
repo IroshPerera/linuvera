@@ -1,4 +1,15 @@
 # Linuvera
+[![Build and Test](https://github.com/IroshPerera/linuvera/actions/workflows/ci.yml/badge.svg)](https://github.com/IroshPerera/linuvera/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Latest Release](https://img.shields.io/github/v/release/IroshPerera/linuvera)](https://github.com/IroshPerera/linuvera/releases)
+
+<p align="center">
+  <img
+    src="src/main/resources/packaging/linuvera-icon.png"
+    alt="Linuvera application icon"
+    width="160"
+  >
+</p>
 
 Linuvera is an open-source Linux developer and system support toolkit built with JavaFX.
 
@@ -133,10 +144,19 @@ Linuvera is currently under active development.
 
 The current version focuses on read-only Linux system monitoring, developer environment inspection, service inspection, process monitoring, storage information, logs, ports, and Debian packaging.
 
+## Known Limitations
+
+- Currently focused on Ubuntu and Debian-based Linux distributions.
+- Some features depend on Linux commands such as `systemctl`, `journalctl`, and `ss`.
+- The current modules are primarily read-only monitoring tools.
+- Service and process control actions are not available yet.
+- Some system information may require additional user permissions.
+- The Debian package currently targets amd64 systems.
+
 ## Open Source
 
 Contributions, suggestions, bug reports, and feature ideas are welcome.
 
 ## License
 
-This project will be released under an open-source license.
+Linuvera is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
