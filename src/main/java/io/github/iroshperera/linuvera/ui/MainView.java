@@ -34,6 +34,7 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import io.github.iroshperera.linuvera.system.ProcessMetricsService;
+import io.github.iroshperera.linuvera.system.StorageMetricsService;
 
 import java.util.List;
 
@@ -148,6 +149,14 @@ public final class MainView extends BorderPane {
             > filteredProcesses;
 
     private TextField processSearchField;
+
+    private final StorageMetricsService
+            storageMetricsService =
+            new StorageMetricsService();
+
+    private TableView<
+            StorageMetricsService.StorageInfo
+            > storageTable;
 
     public MainView() {
         getStyleClass().add("app-shell");
@@ -362,6 +371,9 @@ public final class MainView extends BorderPane {
             case "Processes" ->
                     refreshProcessesData();
 
+            case "Storage" ->
+                    refreshStorageData();
+
             default ->
                     showPage(currentPage);
         }
@@ -380,6 +392,9 @@ public final class MainView extends BorderPane {
 
             case "Processes" ->
                     refreshProcessesData();
+
+            case "Storage" ->
+                    refreshStorageData();
 
             default -> {
                 // No automatic refresh required.
@@ -425,6 +440,14 @@ public final class MainView extends BorderPane {
                 );
             }
 
+            case "Storage" -> {
+                pageTitleLabel.setText("Storage");
+
+                pageSubtitleLabel.setText(
+                        "Inspect mounted filesystems and available storage."
+                );
+            }
+
             default -> {
                 pageTitleLabel.setText(pageName);
                 pageSubtitleLabel.setText(
@@ -438,6 +461,13 @@ public final class MainView extends BorderPane {
 
         currentPage = pageName;
         updateTopBar(pageName);
+
+        if ("Storage".equals(pageName)) {
+            pageContainer.getChildren()
+                    .setAll(createStoragePage());
+
+            return;
+        }
 
         if ("Processes".equals(pageName)) {
             pageContainer.getChildren()
@@ -1228,6 +1258,20 @@ public final class MainView extends BorderPane {
                         .collectProcesses()
         );
         applyProcessFilter();
+    }
+    private void refreshStorageData() {
+
+        if (storageTable == null) {
+            return;
+        }
+
+        storageTable.getItems()
+                .setAll(
+                        storageMetricsService
+                                .collectStorage()
+                );
+
+        adjustStorageTableHeight();
     }
 
     private void refreshPortsData() {
@@ -2465,6 +2509,263 @@ public final class MainView extends BorderPane {
                             )
                             .contains(query);
                 }
+        );
+    }
+
+    private ScrollPane createStoragePage() {
+
+        Label title =
+                new Label("Storage Overview");
+
+        title.getStyleClass()
+                .add("section-title");
+
+        Label subtitle =
+                new Label(
+                        "Inspect mounted filesystems and available storage."
+                );
+
+        subtitle.getStyleClass()
+                .add("page-subtitle");
+
+        VBox heading = new VBox(
+                6,
+                title,
+                subtitle
+        );
+
+        Label tableTitle =
+                new Label("Mounted File Systems");
+
+        tableTitle.getStyleClass()
+                .add("section-title");
+
+        storageTable =
+                createStorageTable();
+
+        VBox content = new VBox(
+                24,
+                heading,
+                tableTitle,
+                storageTable
+        );
+
+        content.setPadding(
+                new Insets(34)
+        );
+
+        content.getStyleClass()
+                .add("dashboard-content");
+
+        ScrollPane scrollPane =
+                new ScrollPane(content);
+
+        scrollPane.setFitToWidth(true);
+
+        scrollPane.setHbarPolicy(
+                ScrollPane.ScrollBarPolicy.NEVER
+        );
+
+        scrollPane.getStyleClass()
+                .add("dashboard-scroll");
+
+        return scrollPane;
+    }
+
+    private TableView<
+            StorageMetricsService.StorageInfo
+            > createStorageTable() {
+
+        TableView<
+                StorageMetricsService.StorageInfo
+                > table =
+                new TableView<>();
+
+        TableColumn<
+                StorageMetricsService.StorageInfo,
+                String
+                > nameColumn =
+                new TableColumn<>("Filesystem");
+
+        nameColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                data.getValue().name()
+                        )
+        );
+
+        TableColumn<
+                StorageMetricsService.StorageInfo,
+                String
+                > mountColumn =
+                new TableColumn<>("Mounted On");
+
+        mountColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                data.getValue().mountPoint()
+                        )
+        );
+
+        TableColumn<
+                StorageMetricsService.StorageInfo,
+                String
+                > typeColumn =
+                new TableColumn<>("Type");
+
+        typeColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                data.getValue()
+                                        .fileSystemType()
+                        )
+        );
+
+        TableColumn<
+                StorageMetricsService.StorageInfo,
+                String
+                > totalColumn =
+                new TableColumn<>("Total");
+
+        totalColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                formatStorageBytes(
+                                        data.getValue()
+                                                .totalBytes()
+                                )
+                        )
+        );
+
+        TableColumn<
+                StorageMetricsService.StorageInfo,
+                String
+                > usedColumn =
+                new TableColumn<>("Used");
+
+        usedColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                formatStorageBytes(
+                                        data.getValue()
+                                                .usedBytes()
+                                )
+                        )
+        );
+
+        TableColumn<
+                StorageMetricsService.StorageInfo,
+                String
+                > freeColumn =
+                new TableColumn<>("Free");
+
+        freeColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                formatStorageBytes(
+                                        data.getValue()
+                                                .freeBytes()
+                                )
+                        )
+        );
+
+        TableColumn<
+                StorageMetricsService.StorageInfo,
+                String
+                > usageColumn =
+                new TableColumn<>("Usage");
+
+        usageColumn.setCellValueFactory(
+                data ->
+                        new ReadOnlyStringWrapper(
+                                String.format(
+                                        java.util.Locale.ROOT,
+                                        "%.1f%%",
+                                        data.getValue()
+                                                .usagePercent()
+                                )
+                        )
+        );
+
+        table.getColumns().addAll(
+                nameColumn,
+                mountColumn,
+                typeColumn,
+                totalColumn,
+                usedColumn,
+                freeColumn,
+                usageColumn
+        );
+
+        table.setItems(
+                FXCollections.observableArrayList(
+                        storageMetricsService
+                                .collectStorage()
+                )
+        );
+
+        adjustStorageTableHeight();
+
+        table.setColumnResizePolicy(
+                TableView.CONSTRAINED_RESIZE_POLICY
+        );
+
+        table.setPrefHeight(560);
+
+        table.setPlaceholder(
+                new Label("No storage data available.")
+        );
+
+        table.getStyleClass()
+                .add("ports-table");
+
+        return table;
+    }
+
+    private String formatStorageBytes(
+            long bytes
+    ) {
+        double gigabytes =
+                bytes / (1024.0 * 1024.0 * 1024.0);
+
+        if (gigabytes >= 1) {
+            return String.format(
+                    java.util.Locale.ROOT,
+                    "%.1f GB",
+                    gigabytes
+            );
+        }
+
+        double megabytes =
+                bytes / (1024.0 * 1024.0);
+
+        return String.format(
+                java.util.Locale.ROOT,
+                "%.1f MB",
+                megabytes
+        );
+    }
+
+    private void adjustStorageTableHeight() {
+
+        if (storageTable == null) {
+            return;
+        }
+
+        int rowCount =
+                storageTable.getItems().size();
+
+        double tableHeight =
+                52 + (rowCount * 46);
+
+        storageTable.setPrefHeight(
+                Math.max(
+                        180,
+                        Math.min(
+                                560,
+                                tableHeight
+                        )
+                )
         );
     }
 }
