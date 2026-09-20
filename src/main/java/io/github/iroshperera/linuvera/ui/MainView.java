@@ -1,5 +1,7 @@
 package io.github.iroshperera.linuvera.ui;
 
+import io.github.iroshperera.linuvera.system.SystemMetricsService;
+import io.github.iroshperera.linuvera.system.SystemMetricsService.SystemMetrics;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -13,11 +15,39 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
+
+import java.util.Locale;
 
 public final class MainView extends BorderPane {
 
     private final StackPane pageContainer = new StackPane();
+    private final SystemMetricsService metricsService =
+            new SystemMetricsService();
+
     private Button activeButton;
+
+    private final Timeline metricsRefreshTimer = new Timeline(
+            new KeyFrame(
+                    Duration.seconds(1),
+                    event -> refreshDashboardMetrics()
+            )
+    );
+
+    private Label cpuValueLabel;
+    private Label cpuStatusLabel;
+
+    private Label memoryValueLabel;
+    private Label memoryStatusLabel;
+
+    private Label diskValueLabel;
+    private Label diskStatusLabel;
+
+    private Label uptimeValueLabel;
+    private Label uptimeStatusLabel;
 
     public MainView() {
         getStyleClass().add("app-shell");
@@ -27,6 +57,14 @@ public final class MainView extends BorderPane {
 
         setLeft(createSidebar());
         setCenter(createMainArea());
+
+        refreshDashboardMetrics();
+
+        metricsRefreshTimer.setCycleCount(
+                Animation.INDEFINITE
+        );
+
+        metricsRefreshTimer.play();
     }
 
     private VBox createSidebar() {
@@ -182,6 +220,10 @@ public final class MainView extends BorderPane {
         Button refreshButton = new Button("Refresh");
         refreshButton.getStyleClass().add("refresh-button");
 
+        refreshButton.setOnAction(event ->
+                refreshDashboardMetrics()
+        );
+
         HBox topBar = new HBox(
                 20,
                 pageInformation,
@@ -204,6 +246,8 @@ public final class MainView extends BorderPane {
         if ("Dashboard".equals(pageName)) {
             pageContainer.getChildren()
                     .setAll(createDashboardContent());
+
+            refreshDashboardMetrics();
 
             return;
         }
@@ -305,30 +349,34 @@ public final class MainView extends BorderPane {
 
         VBox cpuCard = createMetricCard(
                 "CPU Usage",
-                "32%",
-                "Healthy",
-                "metric-card-blue"
+                "—",
+                "Loading...",
+                "metric-card-blue",
+                "cpu"
         );
 
         VBox memoryCard = createMetricCard(
                 "Memory Usage",
-                "61%",
-                "Normal",
-                "metric-card-purple"
+                "—",
+                "Loading...",
+                "metric-card-purple",
+                "memory"
         );
 
         VBox diskCard = createMetricCard(
                 "Disk Usage",
-                "48%",
-                "Healthy",
-                "metric-card-green"
+                "—",
+                "Loading...",
+                "metric-card-green",
+                "disk"
         );
 
         VBox uptimeCard = createMetricCard(
                 "System Uptime",
-                "3d 7h",
-                "Running",
-                "metric-card-orange"
+                "—",
+                "Loading...",
+                "metric-card-orange",
+                "uptime"
         );
 
         grid.add(cpuCard, 0, 0);
@@ -354,7 +402,8 @@ public final class MainView extends BorderPane {
             String title,
             String value,
             String status,
-            String colorClass
+            String colorClass,
+            String metricKey
     ) {
         Label titleLabel = new Label(title);
         titleLabel.getStyleClass().add("metric-title");
@@ -364,6 +413,32 @@ public final class MainView extends BorderPane {
 
         Label statusLabel = new Label(status);
         statusLabel.getStyleClass().add("metric-status");
+
+        switch (metricKey) {
+            case "cpu" -> {
+                cpuValueLabel = valueLabel;
+                cpuStatusLabel = statusLabel;
+            }
+
+            case "memory" -> {
+                memoryValueLabel = valueLabel;
+                memoryStatusLabel = statusLabel;
+            }
+
+            case "disk" -> {
+                diskValueLabel = valueLabel;
+                diskStatusLabel = statusLabel;
+            }
+
+            case "uptime" -> {
+                uptimeValueLabel = valueLabel;
+                uptimeStatusLabel = statusLabel;
+            }
+
+            default -> {
+                // No dynamic data required for this card yet.
+            }
+        }
 
         VBox card = new VBox(
                 14,
@@ -378,6 +453,180 @@ public final class MainView extends BorderPane {
         );
 
         return card;
+    }
+
+    private void refreshDashboardMetrics() {
+
+        if (cpuValueLabel == null
+                || memoryValueLabel == null
+                || diskValueLabel == null
+                || uptimeValueLabel == null) {
+            return;
+        }
+
+        try {
+            SystemMetrics metrics =
+                    metricsService.collectMetrics();
+
+            double memoryUsagePercent =
+                    calculateMemoryUsagePercent(metrics);
+
+            cpuValueLabel.setText(
+                    formatPercentage(metrics.cpuUsagePercent())
+            );
+
+            cpuStatusLabel.setText(
+                    usageStatus(metrics.cpuUsagePercent())
+            );
+
+            memoryValueLabel.setText(
+                    formatMemory(metrics.usedMemoryBytes())
+                            + " / "
+                            + formatMemory(metrics.totalMemoryBytes())
+            );
+
+            memoryStatusLabel.setText(
+                    formatPercentage(memoryUsagePercent)
+                            + " used"
+            );
+
+            diskValueLabel.setText(
+                    formatPercentage(metrics.diskUsagePercent())
+            );
+
+            diskStatusLabel.setText(
+                    diskUsageStatus(metrics.diskUsagePercent())
+            );
+
+            uptimeValueLabel.setText(
+                    formatUptime(metrics.uptimeSeconds())
+            );
+
+            uptimeStatusLabel.setText("Running");
+
+        } catch (RuntimeException exception) {
+
+            cpuValueLabel.setText("N/A");
+            cpuStatusLabel.setText("Unavailable");
+
+            memoryValueLabel.setText("N/A");
+            memoryStatusLabel.setText("Unavailable");
+
+            diskValueLabel.setText("N/A");
+            diskStatusLabel.setText("Unavailable");
+
+            uptimeValueLabel.setText("N/A");
+            uptimeStatusLabel.setText("Unavailable");
+
+            System.err.println(
+                    "Unable to read system metrics: "
+                            + exception.getMessage()
+            );
+        }
+    }
+
+    private double calculateMemoryUsagePercent(
+            SystemMetrics metrics
+    ) {
+        if (metrics.totalMemoryBytes() <= 0) {
+            return 0;
+        }
+
+        return (
+                metrics.usedMemoryBytes()
+                        * 100.0
+                        / metrics.totalMemoryBytes()
+        );
+    }
+
+    private String formatPercentage(double value) {
+        return String.format(
+                Locale.ROOT,
+                "%.1f%%",
+                value
+        );
+    }
+
+    private String formatMemory(long bytes) {
+
+        double gigabytes =
+                bytes / (1024.0 * 1024.0 * 1024.0);
+
+        return String.format(
+                Locale.ROOT,
+                "%.1f GB",
+                gigabytes
+        );
+    }
+
+    private String formatOperatingSystem(
+            SystemMetrics metrics
+    ) {
+        String family = metrics.osFamily();
+        String version = metrics.osVersion();
+
+        if (version == null || version.isBlank()) {
+            return family;
+        }
+
+        return family + " " + version;
+    }
+
+    private String diskUsageStatus(double percentage) {
+
+        if (percentage < 70) {
+            return "Healthy";
+        }
+
+        if (percentage < 90) {
+            return "Nearly full";
+        }
+
+        return "Critical";
+    }
+
+    private String formatUptime(long totalSeconds) {
+
+        long days = totalSeconds / 86_400;
+        long hours = (totalSeconds % 86_400) / 3_600;
+        long minutes = (totalSeconds % 3_600) / 60;
+
+        if (days > 0) {
+            return String.format(
+                    Locale.ROOT,
+                    "%dd %dh",
+                    days,
+                    hours
+            );
+        }
+
+        if (hours > 0) {
+            return String.format(
+                    Locale.ROOT,
+                    "%dh %dm",
+                    hours,
+                    minutes
+            );
+        }
+
+        return String.format(
+                Locale.ROOT,
+                "%dm",
+                minutes
+        );
+    }
+
+    private String usageStatus(double percentage) {
+
+        if (percentage < 70) {
+            return "Healthy";
+        }
+
+        if (percentage < 90) {
+            return "Elevated";
+        }
+
+        return "High";
     }
 
     private HBox createServicesCard() {
